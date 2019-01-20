@@ -2,7 +2,9 @@ package xlsx
 
 import (
 	"archive/zip"
+	"bufio"
 	"bytes"
+	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
@@ -11,7 +13,7 @@ import (
 	"strings"
 )
 
-const contentTypes = "[Content_Types].xml"
+const strContentTypes = "[Content_Types].xml"
 
 // zinfo represents info about how to find the xlsx parts inside of the zip package
 type zinfo struct {
@@ -71,7 +73,7 @@ func zparseContentTypes(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 
 	for ix, file := range zr.File {
 		lcactual := strings.ToLower(file.FileHeader.Name)
-		lcexpect := strings.ToLower(contentTypes)
+		lcexpect := strings.ToLower(strContentTypes)
 		lenactual := len(lcactual)
 		lenexpect := len(lcexpect)
 
@@ -87,6 +89,25 @@ func zparseContentTypes(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 	}
 
 	if zi.contentTypesIndex < 0 {
+		return zi, err
+	}
+
+	file := zr.File[zi.contentTypesIndex]
+	ctt := contentTypesTypes{}
+	ctbuf := bytes.Buffer{}
+	ctwri := bufio.NewWriter(&ctbuf)
+	ofile, err := file.Open()
+
+	if err != nil {
+		return zi, err
+	} else {
+		defer ofile.Close()
+	}
+
+	io.Copy(ctwri, ofile)
+	err = xml.Unmarshal(ctbuf.Bytes(), &ctt)
+
+	if err != nil {
 		return zi, err
 	}
 
@@ -167,4 +188,34 @@ func unzip(src string, dest string) ([]string, error) {
 		}
 	}
 	return filenames, nil
+}
+
+type ContentTypeItem struct {
+	//Default     xml.Name `xml:"Default"`
+	//Override    xml.Name `xml:"Override"`
+	ContentType string `xml:"ContentType,attr""`
+	Extension   string `xml:"Extension,attr"`
+	PartName    string `xml:"PartName,attr"`
+}
+
+type ContentTypeDefault struct {
+	XMLName xml.Name `xml:"Default"`
+	ContentTypeItem
+}
+
+type ContentTypeOverride struct {
+	XMLName xml.Name `xml:"Override"`
+	ContentTypeItem
+}
+
+type ContentTypes struct {
+	xmlns     string                `xml:"xmlns,attr"`
+	defaults  []ContentTypeDefault  `xml:"Default"`
+	overrides []ContentTypeOverride `xml:"Override"`
+}
+
+type contentTypesTypes struct {
+	XMLName   xml.Name              `xml:"Types"`
+	Defaults  []ContentTypeDefault  `xml:"Default"`
+	Overrides []ContentTypeOverride `xml:"Override"`
 }

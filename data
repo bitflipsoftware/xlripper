@@ -9,5 +9,11 @@ package xlsx
 // In most spreadsheet UIs, column 0 is represented as 'A' and row 0 is represented as row '1'.
 //
 type Data struct {
+    Columns []Column
+}
 
+func NewData() Data {
+    d := Data{}
+    d.Columns := make([]Column, 0)
+    return d
 }

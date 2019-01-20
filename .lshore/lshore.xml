@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<longshoreman xmlns="http://longshoreman.io/xsd/lshore" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://fakeurl.com longshoreman.xsd">
+    <meta>
+        <longshoreman-version>1.0</longshoreman-version>
+        <project-name>xlsx</project-name>
+        <repo-provider>Dockerfile.repo</repo-provider>
+    </meta>
+    <instances>
+        <instance name="test">
+            <instance-size>
+                <cpu-cores>2</cpu-cores>
+                <ram-gb>4</ram-gb>
+                <storage-size-gb>16</storage-size-gb>
+            </instance-size>
+            <runnables>
+                <runnable>
+                    <docker-compose>
+                        <filepath>./docker-compose.yml</filepath>
+                        <sentinels>
+                            <sentinel name="testrunner">
+                                <timeout-seconds>240</timeout-seconds>
+                                <required-exit-code>0</required-exit-code>
+                            </sentinel>
+                        </sentinels>
+                    </docker-compose>
+                </runnable>
+            </runnables>
+        </instance>
+    </instances>
+</longshoreman>

@@ -11,7 +11,7 @@ ENV BIND_MNT="/repo"
 WORKDIR "${WRK}"
 
 # add stuff to $WORK_DIR
-RUN git clone https://github.com/bitflip-software/xlsx.git .
+RUN git clone https://github.com/bitflip-software/xlsx.git "${WRK}"
 RUN git config user.email "noreply@longshoreman.io",
 RUN git config user.name "Longshoreman CI",
 RUN git checkout $BASE
@@ -19,5 +19,5 @@ RUN git checkout $HEAD
 RUN git merge $BASE
 RUN git checkout $HEAD
 
-# copy from container dir ($WORK_DIR) to binded host dir (/repo:/repo)
-CMD echo "copying from $WRK to $BIND_MNT..." && cp -r "$WRK/" "$BIND_MNT/"
+# copy from container dir ($WRK) to binded host dir (/repo:/repo)
+CMD echo "copying from $WRK to $BIND_MNT..." && cp -r "$WRK/." "$BIND_MNT"

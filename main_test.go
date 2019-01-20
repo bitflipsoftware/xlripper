@@ -5,6 +5,6 @@ import (
 )
 
 func TestNothing(t *testing.T) {
-	str := xopen(Mac1621)
+	str := topen(Mac1621)
 	unzip(str, "/Users/mjb/Desktop")
 }

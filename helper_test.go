@@ -13,7 +13,7 @@ const (
 	Mac1621 = "mac-16.21.xlsx"
 )
 
-func xopen(filename string) string {
+func topen(filename string) string {
 	p := xpath(filename)
 	f, err := os.Open(p)
 

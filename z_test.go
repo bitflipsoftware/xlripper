@@ -4,6 +4,19 @@ import (
 	"testing"
 )
 
+func TestZBad(t *testing.T) {
+	tn := "TestZBad"
+	raw := "this is not a valid zip file"
+	_, err := zopen(raw)
+
+	got := btos(err == nil)
+	want := btos(false)
+
+	if got != want {
+		t.Error(tfail(tn, "err == nil", got, want))
+	}
+}
+
 func TestZ(t *testing.T) {
 	tn := "TestZ"
 	raw := topen(Mac1621)

@@ -11,6 +11,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/bitflip-software/xlsx/xmlprivate"
 )
 
 const strContentTypes = "[Content_Types].xml"
@@ -19,6 +21,7 @@ const strContentTypes = "[Content_Types].xml"
 type zinfo struct {
 	contentTypesFound bool
 	contentTypesIndex int
+	contentTypes      xmlprivate.ContentTypes
 }
 
 // zstruct represents the zip file reader and metadata about what was found in the xlsx package
@@ -57,11 +60,11 @@ func zinit(zr *zip.Reader) (z zstruct, err error) {
 		return zstruct{}, err
 	}
 
-	z.info, err = zparseRels(zr, z.info)
-
-	if err != nil {
-		return zstruct{}, err
-	}
+	//z.info, err = zparseRels(zr, z.info)
+	//
+	//if err != nil {
+	//	return zstruct{}, err
+	//}
 
 	return z, nil
 }
@@ -93,7 +96,7 @@ func zparseContentTypes(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 	}
 
 	file := zr.File[zi.contentTypesIndex]
-	ctt := contentTypesTypes{}
+	ctt := xmlprivate.ContentTypes{}
 	ctbuf := bytes.Buffer{}
 	ctwri := bufio.NewWriter(&ctbuf)
 	ofile, err := file.Open()
@@ -111,16 +114,11 @@ func zparseContentTypes(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 		return zi, err
 	}
 
-	xmlFile, err := os.Open("users.xml")
-	// if we os.Open returns an error then handle it
-	if err != nil {
-		fmt.Println(err)
+	if len(ctt.Defaults) == 0 && len(ctt.Overrides) == 0 {
+		return zi, fmt.Errorf("the %s file has no contents", strContentTypes)
 	}
 
-	fmt.Println("Successfully Opened users.xml")
-	// defer the closing of our xmlFile so that we can parse it later on
-	defer xmlFile.Close()
-
+	zi.contentTypes = ctt
 	return zi, nil
 }
 
@@ -188,34 +186,4 @@ func unzip(src string, dest string) ([]string, error) {
 		}
 	}
 	return filenames, nil
-}
-
-type ContentTypeItem struct {
-	//Default     xml.Name `xml:"Default"`
-	//Override    xml.Name `xml:"Override"`
-	ContentType string `xml:"ContentType,attr""`
-	Extension   string `xml:"Extension,attr"`
-	PartName    string `xml:"PartName,attr"`
-}
-
-type ContentTypeDefault struct {
-	XMLName xml.Name `xml:"Default"`
-	ContentTypeItem
-}
-
-type ContentTypeOverride struct {
-	XMLName xml.Name `xml:"Override"`
-	ContentTypeItem
-}
-
-type ContentTypes struct {
-	xmlns     string                `xml:"xmlns,attr"`
-	defaults  []ContentTypeDefault  `xml:"Default"`
-	overrides []ContentTypeOverride `xml:"Override"`
-}
-
-type contentTypesTypes struct {
-	XMLName   xml.Name              `xml:"Types"`
-	Defaults  []ContentTypeDefault  `xml:"Default"`
-	Overrides []ContentTypeOverride `xml:"Override"`
 }

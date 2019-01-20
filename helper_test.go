@@ -3,6 +3,7 @@ package xlsx
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -10,6 +11,7 @@ import (
 )
 
 const (
+	epsilon = 0.000001
 	Mac1621 = "mac-16.21.xlsx"
 )
 
@@ -60,4 +62,16 @@ func testFilesDir() string {
 		panic(err)
 	}
 	return abs
+}
+
+func tfail(test, statement, got, want string) string {
+	return fmt.Sprintf("test: %s, '%s = %s', want %s", test, statement, got, want)
+}
+
+func btos(in bool) string {
+	return fmt.Sprintf("%t", in)
+}
+
+func itos(in int) string {
+	return fmt.Sprintf("%d", in)
 }

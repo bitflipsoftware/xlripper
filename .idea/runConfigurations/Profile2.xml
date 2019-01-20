@@ -1,0 +1,17 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Profile" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="blaze" />
+    <working_directory value="$PROJECT_DIR$/" />
+    <go_parameters value="-i" />
+    <parameters value="--script ../config/env.sh --script-arg dev-local --env ../config/.env -config ../config/system.config.def -cpuprofile build/cpu.prof" />
+    <envs>
+      <env name="BLAZE_LOCAL_IDE_DEV" value="true" />
+    </envs>
+    <kind value="PACKAGE" />
+    <filePath value="$PROJECT_DIR$/" />
+    <package value="github.com/bitflip-software/iqbid/blaze" />
+    <directory value="$PROJECT_DIR$/" />
+    <output_directory value="$PROJECT_DIR$/build" />
+    <method v="2" />
+  </configuration>
+</component>

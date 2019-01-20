@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="integ All Integ Tests" type="GoTestRunConfiguration" factoryName="Go Test">
+    <module name="blaze" />
+    <working_directory value="$PROJECT_DIR$/" />
+    <go_parameters value="-i" />
+    <envs>
+      <env name="BLAZE_LOCAL_IDE_DEV" value="true" />
+    </envs>
+    <framework value="gotest" />
+    <kind value="PACKAGE" />
+    <package value="github.com/bitflip-software/iqbid/blaze/testi" />
+    <directory value="$PROJECT_DIR$/" />
+    <filePath value="$PROJECT_DIR$/|$PROJECT_DIR$/iq_value_test.go" />
+    <method v="2" />
+  </configuration>
+</component>

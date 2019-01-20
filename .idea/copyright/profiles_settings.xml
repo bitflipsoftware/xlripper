@@ -1,8 +1,5 @@
 <component name="CopyrightManager">
-  <settings default="Inteliquent">
-    <module2copyright>
-      <element module="Project Files" copyright="Inteliquent" />
-    </module2copyright>
+  <settings>
     <LanguageOptions name="Go">
       <option name="fileTypeOverride" value="3" />
       <option name="block" value="false" />

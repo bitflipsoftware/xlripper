@@ -1,0 +1,19 @@
+package xlsx
+
+// Data represents the data found in an xlsx sheet. Every cell which contains a value is included.
+// if we take the rightmost cell, this tells us how many columns we need. If we take the bottom-
+// most cell, this tells us how many rows we need. The data is structured in columnar fasion. That
+// is, we present a slice of 'columns', each of which contains a slice of strings representing the
+// values in that column.
+//
+// In most spreadsheet UIs, column 0 is represented as 'A' and row 0 is represented as row '1'.
+//
+type Data struct {
+    Columns []Column
+}
+
+func NewData() Data {
+    d := Data{}
+    d.Columns := make([]Column, 0)
+    return d
+}

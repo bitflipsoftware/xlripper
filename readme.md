@@ -18,3 +18,9 @@ Our xlsx library does one thing only. Its purpose is to take in an xlsx file and
 1) Native Go implementation, no cgo.
 2) As Fast as Possible
 3) Optionally optimize for lower memory overhead once #2 has been acheived.
+
+## Installation
+
+This is a Go library, there is no main function. To use this library in your own application:
+
+`go get -u github.com/bitflip-software/xlsx`

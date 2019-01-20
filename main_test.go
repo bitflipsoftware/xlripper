@@ -1,10 +1,10 @@
 package xlsx
 
 import (
-	"fmt"
 	"testing"
 )
 
 func TestNothing(t *testing.T) {
-	fmt.Print("hi")
+	str := xopen(Mac1621)
+	unzip(str, "/Users/mjb/Desktop")
 }

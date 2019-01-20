@@ -3,7 +3,7 @@
     <meta>
         <longshoreman-version>1.0</longshoreman-version>
         <project-name>xlsx</project-name>
-        <repo-provider>Dockerfile.repo</repo-provider>
+        <repo-provider>./Dockerfile.repo</repo-provider>
     </meta>
     <instances>
         <instance name="test">

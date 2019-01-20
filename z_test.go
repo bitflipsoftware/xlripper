@@ -74,21 +74,21 @@ func TestZ(t *testing.T) {
 	}
 
 	// see if the workbook was found
-	got = btos(z.info.workbook == nil)
+	got = btos(z.info.wkbk == nil)
 	want = btos(false)
 
 	if got != want {
 		t.Error(tfail(tn, "z.info.workbook == nil", got, want))
 	}
 
-	got = z.info.workbookName
+	got = z.info.wkbkName
 	want = "xl/workbook.xml"
 
 	if got != want {
 		t.Error(tfail(tn, "z.info.workbookName", got, want))
 	}
 
-	got = itos(z.info.workbookIndex)
+	got = itos(z.info.wkbkIndex)
 	want = itos(3)
 
 	if got != want {

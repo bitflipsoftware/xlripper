@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"path"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -17,6 +19,7 @@ import (
 const (
 	strContentTypes = "[Content_Types].xml"
 	strRels         = "_rels/.rels"
+	strWorkbookRels = "_rels/workbook.xml.rels"
 )
 
 // zinfo represents info about how to find the xlsx parts inside of the zip package
@@ -25,9 +28,9 @@ type zinfo struct {
 	contentTypes      xmlprivate.ContentTypes
 	relsIndex         int
 	rels              xmlprivate.Rels
-	workbookName      string
-	workbookIndex     int
-	workbook          *zip.File
+	wkbkName          string
+	wkbkIndex         int
+	wkbk              *zip.File
 }
 
 // zstruct represents the zip file reader and metadata about what was found in the xlsx package
@@ -79,6 +82,12 @@ func zinit(zr *zip.Reader) (z zstruct, err error) {
 		return zstruct{}, err
 	}
 
+	z.info, err = zparseWorkbookRels(zr, z.info)
+
+	if err != nil {
+		return zstruct{}, err
+	}
+
 	return z, nil
 }
 
@@ -118,42 +127,50 @@ func zparseContentTypes(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 
 // zparseWorkbookLocation must come after zparseRels
 func zparseWorkbookLocation(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
-	//http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+	// examples seen so far
+	// http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+	// http://purl.oclc.org/ooxml/officeDocument/relationships/officeDocument
 
-	workbookRelsIndex := -1
+	wkbkRelsIndex := -1
 
 	for ix, rel := range zi.rels.Rels {
-		rx, _ := regexp.Compile(`.+openxmlformats\.org.+officeDocument$`)
+		rx, _ := regexp.Compile(`.+officeDocument.+officeDocument$`)
 		match := rx.Match([]byte(rel.Type))
 		if match {
-			workbookRelsIndex = ix
+			wkbkRelsIndex = ix
 		}
 	}
 
-	if workbookRelsIndex < 0 {
+	if wkbkRelsIndex < 0 {
 		for ix, rel := range zi.rels.Rels {
 			rx, _ := regexp.Compile(`workbook\.xml$`)
 			match := rx.Match([]byte(rel.Type))
 			if match {
-				workbookRelsIndex = ix
+				wkbkRelsIndex = ix
 			}
 		}
 	}
 
-	if workbookRelsIndex < 0 {
+	if wkbkRelsIndex < 0 {
 		return zi, nil
 	}
 
-	wkb := zi.rels.Rels[workbookRelsIndex].Target
-	zi.workbookName = removeLeadingSlash(wkb)
-	zi.workbookIndex = zfind(zr, wkb)
+	wkb := zi.rels.Rels[wkbkRelsIndex].Target
+	zi.wkbkName = removeLeadingSlash(wkb)
+	zi.wkbkIndex = zfind(zr, wkb)
 
-	if zi.workbookIndex < 0 {
+	if zi.wkbkIndex < 0 {
 		return zi, errors.New("the workbook could not be found")
 	}
 
-	zi.workbook = zr.File[zi.workbookIndex]
+	zi.wkbk = zr.File[zi.wkbkIndex]
 	return zi, nil
+}
+
+func wkbkRelsPath(wkbkPath string) (wkbkRelsPath string) {
+	dir := filepath.Dir(wkbkPath)
+	path := path.Join(dir, strWorkbookRels)
+	return path
 }
 
 func zfind(zr *zip.Reader, filename string) (index int) {
@@ -226,6 +243,18 @@ func zparseRels(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 	}
 
 	zi.rels = xstruct
+
+	return zi, nil
+}
+
+// zparseWorkbookRels requires that the workbook has been found
+func zparseWorkbookRels(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
+	wrelsName := wkbkRelsPath(zi.wkbkName)
+	ix := zfind(zr, wrelsName)
+
+	if ix < 0 {
+		return zi, fmt.Errorf("workbook rels '%s' could not be found", wrelsName)
+	}
 
 	return zi, nil
 }

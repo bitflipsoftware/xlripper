@@ -8,20 +8,22 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/bitflip-software/xlsx/xmlprivate"
 )
 
-const strContentTypes = "[Content_Types].xml"
+const (
+	strContentTypes = "[Content_Types].xml"
+	strRels         = "_rels/.rels"
+)
 
 // zinfo represents info about how to find the xlsx parts inside of the zip package
 type zinfo struct {
-	contentTypesFound bool
 	contentTypesIndex int
 	contentTypes      xmlprivate.ContentTypes
+	relsIndex         int
+	rels              xmlprivate.Rels
 }
 
 // zstruct represents the zip file reader and metadata about what was found in the xlsx package
@@ -60,36 +62,17 @@ func zinit(zr *zip.Reader) (z zstruct, err error) {
 		return zstruct{}, err
 	}
 
-	//z.info, err = zparseRels(zr, z.info)
-	//
-	//if err != nil {
-	//	return zstruct{}, err
-	//}
+	z.info, err = zparseRels(zr, z.info)
+
+	if err != nil {
+		return zstruct{}, err
+	}
 
 	return z, nil
 }
 
 func zparseContentTypes(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
-	if zr == nil {
-		return zi, errors.New("nil zip.Reader")
-	}
-
-	for ix, file := range zr.File {
-		lcactual := strings.ToLower(file.FileHeader.Name)
-		lcexpect := strings.ToLower(strContentTypes)
-		lenactual := len(lcactual)
-		lenexpect := len(lcexpect)
-
-		if lenactual < lenexpect {
-			continue
-		}
-
-		if lcactual[lenactual-lenexpect:] == lcexpect {
-			zi.contentTypesFound = true
-			zi.contentTypesIndex = ix
-			break
-		}
-	}
+	zi.contentTypesIndex = zfind(zr, strContentTypes)
 
 	if zi.contentTypesIndex < 0 {
 		return zi, err
@@ -122,68 +105,76 @@ func zparseContentTypes(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 	return zi, nil
 }
 
-func zparseRels(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
-	return zi, nil
+func zfind(zr *zip.Reader, filename string) (index int) {
+	filename = removeLeadingSlash(filename)
+
+	for ix, file := range zr.File {
+		lcActual := strings.ToLower(removeLeadingSlash(file.FileHeader.Name))
+		lcToFind := strings.ToLower(filename)
+		lenActual := len(lcActual)
+		lenToFind := len(lcToFind)
+
+		if lenActual < lenToFind {
+			continue
+		}
+
+		if lcActual[lenActual-lenToFind:] == lcToFind {
+			return ix
+		}
+	}
+
+	return -1
 }
 
-// unzip is a reference function that I found on the Internet
-// TODO - remove this function
-func unzip(src string, dest string) ([]string, error) {
+func removeLeadingSlash(instr string) (outstr string) {
+	if len(instr) == 0 {
+		return instr
+	} else if len(instr) == 1 && instr == "/" {
+		return ""
+	} else if len(instr) == 1 && instr != "/" {
+		return instr
+	}
 
-	var filenames []string
-	z, err := zopen(src)
+	var first rune
+	for _, r := range instr {
+		first = r
+		break
+	}
 
-	//z, err := zip.OpenReader(src)
+	if first == '/' {
+		return instr[1:]
+	}
+
+	return instr
+}
+
+func zparseRels(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
+	zi.relsIndex = zfind(zr, strRels)
+
+	if zi.contentTypesIndex < 0 {
+		return zi, err
+	}
+
+	file := zr.File[zi.relsIndex]
+	xstruct := xmlprivate.Rels{}
+	fbuf := bytes.Buffer{}
+	fwrite := bufio.NewWriter(&fbuf)
+	ofile, err := file.Open()
+
 	if err != nil {
-		return filenames, err
+		return zi, err
+	} else {
+		defer ofile.Close()
 	}
-	//defer z.Close()
 
-	for _, f := range z.r.File {
+	io.Copy(fwrite, ofile)
+	err = xml.Unmarshal(fbuf.Bytes(), &xstruct)
 
-		rc, err := f.Open()
-		if err != nil {
-			return filenames, err
-		}
-		defer rc.Close()
-
-		// Store filename/path for returning and using later on
-		fpath := filepath.Join(dest, f.Name)
-
-		// Check for ZipSlip. More Info: http://bit.ly/2MsjAWE
-		if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
-			return filenames, fmt.Errorf("%s: illegal file path", fpath)
-		}
-
-		filenames = append(filenames, fpath)
-
-		if f.FileInfo().IsDir() {
-
-			// Make Folder
-			os.MkdirAll(fpath, os.ModePerm)
-
-		} else {
-
-			// Make File
-			if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
-				return filenames, err
-			}
-
-			outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
-			if err != nil {
-				return filenames, err
-			}
-
-			_, err = io.Copy(outFile, rc)
-
-			// Close the file without defer to close before next iteration of loop
-			outFile.Close()
-
-			if err != nil {
-				return filenames, err
-			}
-
-		}
+	if err != nil {
+		return zi, err
 	}
-	return filenames, nil
+
+	zi.rels = xstruct
+
+	return zi, nil
 }

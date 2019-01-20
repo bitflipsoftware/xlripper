@@ -15,15 +15,8 @@ func TestZ(t *testing.T) {
 	}
 
 	// check the parsing of the content types file
-	got := btos(z.info.contentTypesFound)
-	want := btos(true)
-
-	if got != want {
-		t.Error(tfail(tn, "z.info.contentTypesFound", got, want))
-	}
-
-	got = itos(z.info.contentTypesIndex)
-	want = itos(0)
+	got := itos(z.info.contentTypesIndex)
+	want := itos(0)
 
 	if got != want {
 		t.Error(tfail(tn, "itos(z.info.contentTypesIndex)", got, want))
@@ -41,5 +34,42 @@ func TestZ(t *testing.T) {
 
 	if got != want {
 		t.Error(tfail(tn, "itos(len(z.info.contentTypes.Overrides))", got, want))
+	}
+
+	// check the parsing of the rels file
+	got = itos(z.info.relsIndex)
+	want = itos(1)
+
+	if got != want {
+		t.Error(tfail(tn, "z.info.relsIndex", got, want))
+	}
+
+	got = itos(len(z.info.rels.Rels))
+	want = itos(3)
+
+	if got != want {
+		t.Error(tfail(tn, "len(z.info.rels.Rels)", got, want))
+		return // we might panic if this is not correct
+	}
+
+	got = z.info.rels.Rels[2].Target
+	want = "xl/workbook.xml"
+
+	if got != want {
+		t.Error(tfail(tn, "z.info.rels.Rels[2].Target", got, want))
+	}
+
+	got = z.info.rels.Rels[2].ID
+	want = "rId1"
+
+	if got != want {
+		t.Error(tfail(tn, "z.info.rels.Rels[2].ID", got, want))
+	}
+
+	got = z.info.rels.Rels[2].Type
+	want = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+
+	if got != want {
+		t.Error(tfail(tn, "z.info.rels.Rels[2].Type", got, want))
 	}
 }

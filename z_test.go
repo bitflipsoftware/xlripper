@@ -72,4 +72,26 @@ func TestZ(t *testing.T) {
 	if got != want {
 		t.Error(tfail(tn, "z.info.rels.Rels[2].Type", got, want))
 	}
+
+	// see if the workbook was found
+	got = btos(z.info.workbook == nil)
+	want = btos(false)
+
+	if got != want {
+		t.Error(tfail(tn, "z.info.workbook == nil", got, want))
+	}
+
+	got = z.info.workbookName
+	want = "xl/workbook.xml"
+
+	if got != want {
+		t.Error(tfail(tn, "z.info.workbookName", got, want))
+	}
+
+	got = itos(z.info.workbookIndex)
+	want = itos(3)
+
+	if got != want {
+		t.Error(tfail(tn, "z.info.workbookIndex", got, want))
+	}
 }

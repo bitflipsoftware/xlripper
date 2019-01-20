@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"strings"
 
 	"github.com/bitflip-software/xlsx/xmlprivate"
@@ -24,6 +25,9 @@ type zinfo struct {
 	contentTypes      xmlprivate.ContentTypes
 	relsIndex         int
 	rels              xmlprivate.Rels
+	workbookName      string
+	workbookIndex     int
+	workbook          *zip.File
 }
 
 // zstruct represents the zip file reader and metadata about what was found in the xlsx package
@@ -32,6 +36,7 @@ type zstruct struct {
 	info zinfo
 }
 
+// zopen parses all of the necessary information from the xlsx package into a usable data structure
 func zopen(zipData string) (z zstruct, err error) {
 	b := []byte(zipData)
 	brdr := bytes.NewReader(b)
@@ -63,6 +68,12 @@ func zinit(zr *zip.Reader) (z zstruct, err error) {
 	}
 
 	z.info, err = zparseRels(zr, z.info)
+
+	if err != nil {
+		return zstruct{}, err
+	}
+
+	z.info, err = zparseWorkbookLocation(zr, z.info)
 
 	if err != nil {
 		return zstruct{}, err
@@ -102,6 +113,46 @@ func zparseContentTypes(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 	}
 
 	zi.contentTypes = ctt
+	return zi, nil
+}
+
+// zparseWorkbookLocation must come after zparseRels
+func zparseWorkbookLocation(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
+	//http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+
+	workbookRelsIndex := -1
+
+	for ix, rel := range zi.rels.Rels {
+		rx, _ := regexp.Compile(`.+openxmlformats\.org.+officeDocument$`)
+		match := rx.Match([]byte(rel.Type))
+		if match {
+			workbookRelsIndex = ix
+		}
+	}
+
+	if workbookRelsIndex < 0 {
+		for ix, rel := range zi.rels.Rels {
+			rx, _ := regexp.Compile(`workbook\.xml$`)
+			match := rx.Match([]byte(rel.Type))
+			if match {
+				workbookRelsIndex = ix
+			}
+		}
+	}
+
+	if workbookRelsIndex < 0 {
+		return zi, nil
+	}
+
+	wkb := zi.rels.Rels[workbookRelsIndex].Target
+	zi.workbookName = removeLeadingSlash(wkb)
+	zi.workbookIndex = zfind(zr, wkb)
+
+	if zi.workbookIndex < 0 {
+		return zi, errors.New("the workbook could not be found")
+	}
+
+	zi.workbook = zr.File[zi.workbookIndex]
 	return zi, nil
 }
 

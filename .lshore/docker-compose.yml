@@ -1,0 +1,7 @@
+version: '2.2'
+services:
+  testrunner:
+    restart: "no"
+    build: 
+      context: ..
+      dockerfile: ./.lshore/Dockerfile

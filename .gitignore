@@ -1,3 +1,5 @@
+# non-generated stuff is at the top
+*.sublime-workspace
 
 # Created by https://www.gitignore.io/api/jetbrains
 # Edit at https://www.gitignore.io/?templates=jetbrains

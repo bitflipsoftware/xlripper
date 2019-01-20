@@ -1,0 +1,14 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Build" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="xlsx" />
+    <working_directory value="$PROJECT_DIR$/" />
+    <go_parameters value="-i" />
+    <kind value="PACKAGE" />
+    <filePath value="$PROJECT_DIR$/" />
+    <package value="github.com/bitflip-software/xlsx" />
+    <directory value="$PROJECT_DIR$/" />
+    <output_directory value="build" />
+    <option name="run" value="false" />
+    <method v="2" />
+  </configuration>
+</component>

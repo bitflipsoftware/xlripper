@@ -20,4 +20,4 @@ RUN git merge $BASE
 RUN git checkout $HEAD
 
 # copy from container dir ($WORK_DIR) to binded host dir (/repo:/repo)
-CMD echo "copying from $WRK to $BIND_MNT..." && cp -r "$WRK/*" "$BIND_MNT"
+CMD echo "copying from $WRK to $BIND_MNT..." && cp -r "$WRK/" "$BIND_MNT/"

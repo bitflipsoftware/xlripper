@@ -141,7 +141,7 @@ func zparseContentTypes(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 	}
 
 	if len(ctt.Defaults) == 0 && len(ctt.Overrides) == 0 {
-		return zi, fmt.Errorf("the %s file has no contents", strContentTypes)
+		return zi, fmt.Errorf("the %sstrings file has no contents", strContentTypes)
 	}
 
 	zi.contentTypes = ctt
@@ -282,7 +282,7 @@ func zparseWorkbookRels(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 	ix := zfind(zr, wrelsName)
 
 	if ix < 0 {
-		return zi, fmt.Errorf("workbook rels '%s' could not be found", wrelsName)
+		return zi, fmt.Errorf("workbook rels '%sstrings' could not be found", wrelsName)
 	}
 
 	zi.wkbkRelsIndex = ix
@@ -313,7 +313,6 @@ func zparseWorkbookRels(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 
 func zparseSharedStrings(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 	// http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings
-
 	index := -1
 
 	for ix, rel := range zi.wkbkRels.Rels {
@@ -344,7 +343,7 @@ func zparseSharedStrings(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 
 	if zi.sharedStringsIndex < 0 {
 		// this is an error because we found a rels entry for sharedStrings but could not find the file
-		return zi, fmt.Errorf("shared strings file '%s' could not be found", zi.sharedStringsName)
+		return zi, fmt.Errorf("shared strings file '%sstrings' could not be found", zi.sharedStringsName)
 	}
 
 	zi.sharedStringsFile = zr.File[zi.sharedStringsIndex]
@@ -363,7 +362,6 @@ func zparseSharedStrings(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 	io.Copy(fwrite, ofile)
 	strxml := string(fbuf.Bytes())
 	runesxml := []rune(strxml)
-	fmt.Print(strxml)
 
 	type stateST struct {
 		inSI      bool
@@ -378,11 +376,6 @@ func zparseSharedStrings(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 outerloop:
 	for i = 0; i < l; i++ {
 		r := runesxml[i]
-
-		// TODO - remove this debug shit
-		s := string(r)
-		window := string(runesxml[maxi(0, i-10):mini(i+10, l)])
-		fmt.Print(s, window)
 
 		if r == '<' {
 			if state.inT {

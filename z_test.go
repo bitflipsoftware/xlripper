@@ -23,7 +23,7 @@ func TestZ(t *testing.T) {
 	z, err := zopen(raw)
 
 	if err != nil {
-		t.Errorf("en error occurred during zopen: %s", err.Error())
+		t.Errorf("en error occurred during zopen: %sstrings", err.Error())
 		return
 	}
 
@@ -101,10 +101,43 @@ func TestZ(t *testing.T) {
 		t.Error(tfail(tn, "z.info.workbookName", got, want))
 	}
 
+	got = itos(z.info.sharedStrings.len())
+	want = itos(13)
+
+	if got != want {
+		t.Error(tfail(tn, "z.info.sharedStrings.len()", got, want))
+	}
+
+	// check the shared strings
 	got = itos(z.info.wkbkIndex)
 	want = itos(3)
 
 	if got != want {
 		t.Error(tfail(tn, "z.info.workbookIndex", got, want))
+	}
+
+	shs := []string{
+		"sfd",
+		"sad;fghjk",
+		"asfgaf",
+		"asdfadsg",
+		"asdgg",
+		"asfgasdfasdf",
+		"asfgadfgadfg",
+		"awer5aw5w45",
+		"z",
+		"b",
+		"d",
+		"xx",
+		"Maybe this will be a shared string.",
+	}
+
+	for ix, str := range shs {
+		got = *(z.info.sharedStrings.get(ix))
+		want = str
+
+		if got != want {
+			t.Error(tfail(tn, "z.info.sharedStrings.get(ix)", got, want))
+		}
 	}
 }

@@ -65,7 +65,7 @@ func testFilesDir() string {
 }
 
 func tfail(test, statement, got, want string) string {
-	return fmt.Sprintf("test: %s, '%s = %s', want %s", test, statement, got, want)
+	return fmt.Sprintf("test: %s, '%s' = '%s', want '%s'", test, statement, got, want)
 }
 
 func btos(in bool) string {

@@ -4,4 +4,4 @@ ENV GOPATH="${ROOTDIR}"
 ENV REPODIR="${GOPATH}/src/github.com/bitflip-software/xlsx"
 COPY . "${REPODIR}"
 WORKDIR "${REPODIR}"
-ENTRYPOINT pwd && go test -v -coverprofile=cover.out -timeout 10m && go tool cover -func=cover.out
+ENTRYPOINT go test -v -coverprofile=cover.out -timeout 10m && go tool cover -func=cover.out

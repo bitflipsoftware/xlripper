@@ -7,21 +7,41 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"html"
 	"io"
-	"os"
+	"path"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/bitflip-software/xlsx/xmlprivate"
 )
 
-const strContentTypes = "[Content_Types].xml"
+const (
+	strContentTypes = "[Content_Types].xml"
+	strRels         = "_rels/.rels"
+	strWorkbookRels = "_rels/workbook.xml.rels"
+)
+
+const angle rune = '<'
 
 // zinfo represents info about how to find the xlsx parts inside of the zip package
 type zinfo struct {
-	contentTypesFound bool
-	contentTypesIndex int
-	contentTypes      xmlprivate.ContentTypes
+	contentTypesIndex  int
+	contentTypes       xmlprivate.ContentTypes
+	relsIndex          int
+	rels               xmlprivate.Rels
+	wkbkName           string
+	wkbkIndex          int
+	wkbk               *zip.File
+	wkbkRelsName       string
+	wkbkRelsIndex      int
+	wkbkRelsFile       *zip.File
+	wkbkRels           xmlprivate.Rels
+	sharedStringsIndex int
+	sharedStringsName  string
+	sharedStringsFile  *zip.File
+	sharedStrings      sharedStrings
 }
 
 // zstruct represents the zip file reader and metadata about what was found in the xlsx package
@@ -30,6 +50,7 @@ type zstruct struct {
 	info zinfo
 }
 
+// zopen parses all of the necessary information from the xlsx package into a usable data structure
 func zopen(zipData string) (z zstruct, err error) {
 	b := []byte(zipData)
 	brdr := bytes.NewReader(b)
@@ -60,36 +81,41 @@ func zinit(zr *zip.Reader) (z zstruct, err error) {
 		return zstruct{}, err
 	}
 
-	//z.info, err = zparseRels(zr, z.info)
-	//
-	//if err != nil {
-	//	return zstruct{}, err
-	//}
+	z.info, err = zparseRels(zr, z.info)
+
+	if err != nil {
+		return zstruct{}, err
+	}
+
+	z.info, err = zparseWorkbookLocation(zr, z.info)
+
+	if err != nil {
+		return zstruct{}, err
+	}
+
+	z.info, err = zparseWorkbookRels(zr, z.info)
+
+	if err != nil {
+		return zstruct{}, err
+	}
+
+	z.info, err = zparseSharedStrings(zr, z.info)
+
+	if err != nil {
+		return zstruct{}, err
+	}
+
+	z.info, err = zparseSheetMetadata(zr, z.info)
+
+	if err != nil {
+		return zstruct{}, err
+	}
 
 	return z, nil
 }
 
 func zparseContentTypes(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
-	if zr == nil {
-		return zi, errors.New("nil zip.Reader")
-	}
-
-	for ix, file := range zr.File {
-		lcactual := strings.ToLower(file.FileHeader.Name)
-		lcexpect := strings.ToLower(strContentTypes)
-		lenactual := len(lcactual)
-		lenexpect := len(lcexpect)
-
-		if lenactual < lenexpect {
-			continue
-		}
-
-		if lcactual[lenactual-lenexpect:] == lcexpect {
-			zi.contentTypesFound = true
-			zi.contentTypesIndex = ix
-			break
-		}
-	}
+	zi.contentTypesIndex = zfind(zr, strContentTypes)
 
 	if zi.contentTypesIndex < 0 {
 		return zi, err
@@ -115,75 +141,318 @@ func zparseContentTypes(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 	}
 
 	if len(ctt.Defaults) == 0 && len(ctt.Overrides) == 0 {
-		return zi, fmt.Errorf("the %s file has no contents", strContentTypes)
+		return zi, fmt.Errorf("the %sstrings file has no contents", strContentTypes)
 	}
 
 	zi.contentTypes = ctt
 	return zi, nil
 }
 
-func zparseRels(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
+// zparseWorkbookLocation must come after zparseRels
+func zparseWorkbookLocation(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
+	// examples seen so far
+	// http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+	// http://purl.oclc.org/ooxml/officeDocument/relationships/officeDocument
+
+	wkbkRelsIndex := -1
+
+	for ix, rel := range zi.rels.Rels {
+		rx, _ := regexp.Compile(`.+officeDocument.+officeDocument$`)
+		match := rx.Match([]byte(rel.Type))
+		if match {
+			wkbkRelsIndex = ix
+		}
+	}
+
+	if wkbkRelsIndex < 0 {
+		for ix, rel := range zi.rels.Rels {
+			rx, _ := regexp.Compile(`workbook\.xml$`)
+			match := rx.Match([]byte(rel.Type))
+			if match {
+				wkbkRelsIndex = ix
+			}
+		}
+	}
+
+	if wkbkRelsIndex < 0 {
+		return zi, nil
+	}
+
+	wkb := zi.rels.Rels[wkbkRelsIndex].Target
+	zi.wkbkName = removeLeadingSlash(wkb)
+	zi.wkbkIndex = zfind(zr, wkb)
+
+	if zi.wkbkIndex < 0 {
+		return zi, errors.New("the workbook could not be found")
+	}
+
+	zi.wkbk = zr.File[zi.wkbkIndex]
 	return zi, nil
 }
 
-// unzip is a reference function that I found on the Internet
-// TODO - remove this function
-func unzip(src string, dest string) ([]string, error) {
+func wkbkRelsPath(wkbkPath string) (wkbkRelsPath string) {
+	dir := filepath.Dir(wkbkPath)
+	path := path.Join(dir, strWorkbookRels)
+	return path
+}
 
-	var filenames []string
-	z, err := zopen(src)
+func joinWithWkbkPath(zi zinfo, relPath string) string {
+	dir := filepath.Dir(zi.wkbkName)
+	path := path.Join(dir, removeLeadingSlash(relPath))
+	return path
+}
 
-	//z, err := zip.OpenReader(src)
+func zfind(zr *zip.Reader, filename string) (index int) {
+	filename = removeLeadingSlash(filename)
+
+	for ix, file := range zr.File {
+		lcActual := strings.ToLower(removeLeadingSlash(file.FileHeader.Name))
+		lcToFind := strings.ToLower(filename)
+		lenActual := len(lcActual)
+		lenToFind := len(lcToFind)
+
+		if lenActual < lenToFind {
+			continue
+		}
+
+		if lcActual[lenActual-lenToFind:] == lcToFind {
+			return ix
+		}
+	}
+
+	return -1
+}
+
+func removeLeadingSlash(instr string) (outstr string) {
+	if len(instr) == 0 {
+		return instr
+	} else if len(instr) == 1 && instr == "/" {
+		return ""
+	} else if len(instr) == 1 && instr != "/" {
+		return instr
+	}
+
+	var first rune
+	for _, r := range instr {
+		first = r
+		break
+	}
+
+	if first == '/' {
+		return instr[1:]
+	}
+
+	return instr
+}
+
+func zparseRels(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
+	zi.relsIndex = zfind(zr, strRels)
+
+	if zi.contentTypesIndex < 0 {
+		return zi, err
+	}
+
+	file := zr.File[zi.relsIndex]
+	xstruct := xmlprivate.Rels{}
+	fbuf := bytes.Buffer{}
+	fwrite := bufio.NewWriter(&fbuf)
+	ofile, err := file.Open()
+
 	if err != nil {
-		return filenames, err
+		return zi, err
+	} else {
+		defer ofile.Close()
 	}
-	//defer z.Close()
 
-	for _, f := range z.r.File {
+	io.Copy(fwrite, ofile)
+	err = xml.Unmarshal(fbuf.Bytes(), &xstruct)
 
-		rc, err := f.Open()
-		if err != nil {
-			return filenames, err
-		}
-		defer rc.Close()
+	if err != nil {
+		return zi, err
+	}
 
-		// Store filename/path for returning and using later on
-		fpath := filepath.Join(dest, f.Name)
+	zi.rels = xstruct
 
-		// Check for ZipSlip. More Info: http://bit.ly/2MsjAWE
-		if !strings.HasPrefix(fpath, filepath.Clean(dest)+string(os.PathSeparator)) {
-			return filenames, fmt.Errorf("%s: illegal file path", fpath)
-		}
+	return zi, nil
+}
 
-		filenames = append(filenames, fpath)
+// zparseWorkbookRels requires that the workbook has been found
+func zparseWorkbookRels(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
+	wrelsName := wkbkRelsPath(zi.wkbkName)
+	ix := zfind(zr, wrelsName)
 
-		if f.FileInfo().IsDir() {
+	if ix < 0 {
+		return zi, fmt.Errorf("workbook rels '%sstrings' could not be found", wrelsName)
+	}
 
-			// Make Folder
-			os.MkdirAll(fpath, os.ModePerm)
+	zi.wkbkRelsIndex = ix
+	zi.wkbkRelsFile = zr.File[ix]
+	zi.wkbkRelsName = removeLeadingSlash(zi.wkbkRelsFile.Name)
+	xstruct := xmlprivate.Rels{}
+	fbuf := bytes.Buffer{}
+	fwrite := bufio.NewWriter(&fbuf)
+	ofile, err := zi.wkbkRelsFile.Open()
 
-		} else {
+	if err != nil {
+		return zi, err
+	} else {
+		defer ofile.Close()
+	}
 
-			// Make File
-			if err = os.MkdirAll(filepath.Dir(fpath), os.ModePerm); err != nil {
-				return filenames, err
-			}
+	io.Copy(fwrite, ofile)
+	err = xml.Unmarshal(fbuf.Bytes(), &xstruct)
 
-			outFile, err := os.OpenFile(fpath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
-			if err != nil {
-				return filenames, err
-			}
+	if err != nil {
+		return zi, err
+	}
 
-			_, err = io.Copy(outFile, rc)
+	zi.wkbkRels = xstruct
 
-			// Close the file without defer to close before next iteration of loop
-			outFile.Close()
+	return zi, nil
+}
 
-			if err != nil {
-				return filenames, err
-			}
+func zparseSharedStrings(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
+	// http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings
+	index := -1
 
+	for ix, rel := range zi.wkbkRels.Rels {
+		rx, _ := regexp.Compile(`.+officeDocument.+sharedStrings$`)
+		match := rx.Match([]byte(rel.Type))
+		if match {
+			index = ix
 		}
 	}
-	return filenames, nil
+
+	if index < 0 {
+		for ix, rel := range zi.wkbkRels.Rels {
+			rx, _ := regexp.Compile(`sharedStrings\.xml$`)
+			match := rx.Match([]byte(rel.Type))
+			if match {
+				index = ix
+			}
+		}
+	}
+
+	if index < 0 {
+		// this is not an error, sharedStrings are not required
+		return zi, nil
+	}
+
+	zi.sharedStringsName = joinWithWkbkPath(zi, zi.wkbkRels.Rels[index].Target)
+	zi.sharedStringsIndex = zfind(zr, zi.sharedStringsName)
+
+	if zi.sharedStringsIndex < 0 {
+		// this is an error because we found a rels entry for sharedStrings but could not find the file
+		return zi, fmt.Errorf("shared strings file '%sstrings' could not be found", zi.sharedStringsName)
+	}
+
+	zi.sharedStringsFile = zr.File[zi.sharedStringsIndex]
+	zi.sharedStrings = newSharedStrings()
+
+	fbuf := bytes.Buffer{}
+	fwrite := bufio.NewWriter(&fbuf)
+	ofile, err := zi.sharedStringsFile.Open()
+
+	if err != nil {
+		return zi, err
+	} else {
+		defer ofile.Close()
+	}
+
+	io.Copy(fwrite, ofile)
+	strxml := string(fbuf.Bytes())
+	runesxml := []rune(strxml)
+
+	type stateST struct {
+		inSI      bool
+		inT       bool
+		bufString bytes.Buffer
+	}
+
+	state := stateST{}
+	l := len(runesxml)
+	i := 0
+
+outerloop:
+	for i = 0; i < l; i++ {
+		r := runesxml[i]
+
+		if r == '<' {
+			if state.inT {
+				// get the string and put it into the shared strings
+				shs := newSharedString()
+				*shs.s = html.UnescapeString(state.bufString.String())
+				zi.sharedStrings.add(shs)
+				state.inSI = false
+				state.inT = false
+				state.bufString.Reset()
+			} else if state.inSI {
+				// check if we are getting a <t>
+				if string(runesxml[i:mini(i+2, l)]) == "<t" {
+					for ; i < l && runesxml[i] != '>'; i++ {
+						// just advance the position
+					}
+					if runesxml[i] == '>' {
+						state.inT = true
+						continue outerloop
+					}
+				}
+			} else {
+				// check if we are getting a <si>
+				peek := string(runesxml[i:mini(i+3, l)])
+				if peek == "<si" {
+					for ; i < l && runesxml[i] != '>'; i++ {
+						// just advance the position
+					}
+					if runesxml[i] == '>' {
+						state.inSI = true
+						continue outerloop
+					}
+				}
+			}
+		} else if state.inT {
+			state.bufString.WriteRune(r)
+		}
+	}
+
+	if state.inT {
+		// get the string and put it into the shared strings
+		shs := newSharedString()
+		*shs.s = html.UnescapeString(state.bufString.String())
+		zi.sharedStrings.add(shs)
+		state.inSI = false
+		state.inT = false
+		state.bufString.Reset()
+	}
+
+	return zi, nil
+}
+
+func mini(a, b int) int {
+	if a < b {
+		return a
+	}
+
+	return b
+}
+
+func maxi(a, b int) int {
+	if a > b {
+		return a
+	}
+
+	return b
+}
+
+func zparseSheetMetadata(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
+	//<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	//<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+	//<Relationship Id="rId3" Target="worksheets/sheet3.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>
+	//<Relationship Id="rId2" Target="worksheets/sheet2.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>
+	//<Relationship Id="rId1" Target="worksheets/sheet1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>
+	//<Relationship Id="rId6" Target="sharedStrings.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings"/>
+	//<Relationship Id="rId5" Target="styles.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"/>
+	//<Relationship Id="rId4" Target="theme/theme1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"/>
+	//</Relationships>
+	return zi, nil
 }

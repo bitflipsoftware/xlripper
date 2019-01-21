@@ -32,21 +32,21 @@ func TestZ(t *testing.T) {
 	want := itos(0)
 
 	if got != want {
-		t.Error(tfail(tn, "itos(z.info.contentTypesIndex)", got, want))
+		t.Error(tfail(tn, "z.info.contentTypesIndex", got, want))
 	}
 
 	got = itos(len(z.info.contentTypes.Defaults))
 	want = itos(2)
 
 	if got != want {
-		t.Error(tfail(tn, "itos(len(z.info.contentTypes.Defaults))", got, want))
+		t.Error(tfail(tn, "len(z.info.contentTypes.Defaults", got, want))
 	}
 
 	got = itos(len(z.info.contentTypes.Overrides))
 	want = itos(9)
 
 	if got != want {
-		t.Error(tfail(tn, "itos(len(z.info.contentTypes.Overrides))", got, want))
+		t.Error(tfail(tn, "len(z.info.contentTypes.Overrides", got, want))
 	}
 
 	// check the parsing of the rels file
@@ -61,7 +61,7 @@ func TestZ(t *testing.T) {
 	want = itos(3)
 
 	if got != want {
-		t.Error(tfail(tn, "len(z.info.rels.Rels)", got, want))
+		t.Error(tfail(tn, "z.info.rels.Rels", got, want))
 		return // we might panic if this is not correct
 	}
 

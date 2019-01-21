@@ -7,6 +7,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"html"
 	"io"
 	"path"
 	"path/filepath"
@@ -22,15 +23,25 @@ const (
 	strWorkbookRels = "_rels/workbook.xml.rels"
 )
 
+const angle rune = '<'
+
 // zinfo represents info about how to find the xlsx parts inside of the zip package
 type zinfo struct {
-	contentTypesIndex int
-	contentTypes      xmlprivate.ContentTypes
-	relsIndex         int
-	rels              xmlprivate.Rels
-	wkbkName          string
-	wkbkIndex         int
-	wkbk              *zip.File
+	contentTypesIndex  int
+	contentTypes       xmlprivate.ContentTypes
+	relsIndex          int
+	rels               xmlprivate.Rels
+	wkbkName           string
+	wkbkIndex          int
+	wkbk               *zip.File
+	wkbkRelsName       string
+	wkbkRelsIndex      int
+	wkbkRelsFile       *zip.File
+	wkbkRels           xmlprivate.Rels
+	sharedStringsIndex int
+	sharedStringsName  string
+	sharedStringsFile  *zip.File
+	sharedStrings      sharedStrings
 }
 
 // zstruct represents the zip file reader and metadata about what was found in the xlsx package
@@ -83,6 +94,18 @@ func zinit(zr *zip.Reader) (z zstruct, err error) {
 	}
 
 	z.info, err = zparseWorkbookRels(zr, z.info)
+
+	if err != nil {
+		return zstruct{}, err
+	}
+
+	z.info, err = zparseSharedStrings(zr, z.info)
+
+	if err != nil {
+		return zstruct{}, err
+	}
+
+	z.info, err = zparseSheetMetadata(zr, z.info)
 
 	if err != nil {
 		return zstruct{}, err
@@ -173,6 +196,12 @@ func wkbkRelsPath(wkbkPath string) (wkbkRelsPath string) {
 	return path
 }
 
+func joinWithWkbkPath(zi zinfo, relPath string) string {
+	dir := filepath.Dir(zi.wkbkName)
+	path := path.Join(dir, removeLeadingSlash(relPath))
+	return path
+}
+
 func zfind(zr *zip.Reader, filename string) (index int) {
 	filename = removeLeadingSlash(filename)
 
@@ -256,5 +285,181 @@ func zparseWorkbookRels(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 		return zi, fmt.Errorf("workbook rels '%s' could not be found", wrelsName)
 	}
 
+	zi.wkbkRelsIndex = ix
+	zi.wkbkRelsFile = zr.File[ix]
+	zi.wkbkRelsName = removeLeadingSlash(zi.wkbkRelsFile.Name)
+	xstruct := xmlprivate.Rels{}
+	fbuf := bytes.Buffer{}
+	fwrite := bufio.NewWriter(&fbuf)
+	ofile, err := zi.wkbkRelsFile.Open()
+
+	if err != nil {
+		return zi, err
+	} else {
+		defer ofile.Close()
+	}
+
+	io.Copy(fwrite, ofile)
+	err = xml.Unmarshal(fbuf.Bytes(), &xstruct)
+
+	if err != nil {
+		return zi, err
+	}
+
+	zi.wkbkRels = xstruct
+
+	return zi, nil
+}
+
+func zparseSharedStrings(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
+	// http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings
+
+	index := -1
+
+	for ix, rel := range zi.wkbkRels.Rels {
+		rx, _ := regexp.Compile(`.+officeDocument.+sharedStrings$`)
+		match := rx.Match([]byte(rel.Type))
+		if match {
+			index = ix
+		}
+	}
+
+	if index < 0 {
+		for ix, rel := range zi.wkbkRels.Rels {
+			rx, _ := regexp.Compile(`sharedStrings\.xml$`)
+			match := rx.Match([]byte(rel.Type))
+			if match {
+				index = ix
+			}
+		}
+	}
+
+	if index < 0 {
+		// this is not an error, sharedStrings are not required
+		return zi, nil
+	}
+
+	zi.sharedStringsName = joinWithWkbkPath(zi, zi.wkbkRels.Rels[index].Target)
+	zi.sharedStringsIndex = zfind(zr, zi.sharedStringsName)
+
+	if zi.sharedStringsIndex < 0 {
+		// this is an error because we found a rels entry for sharedStrings but could not find the file
+		return zi, fmt.Errorf("shared strings file '%s' could not be found", zi.sharedStringsName)
+	}
+
+	zi.sharedStringsFile = zr.File[zi.sharedStringsIndex]
+	zi.sharedStrings = newSharedStrings()
+
+	fbuf := bytes.Buffer{}
+	fwrite := bufio.NewWriter(&fbuf)
+	ofile, err := zi.sharedStringsFile.Open()
+
+	if err != nil {
+		return zi, err
+	} else {
+		defer ofile.Close()
+	}
+
+	io.Copy(fwrite, ofile)
+	strxml := string(fbuf.Bytes())
+	runesxml := []rune(strxml)
+	fmt.Print(strxml)
+
+	type stateST struct {
+		inSI      bool
+		inT       bool
+		bufString bytes.Buffer
+	}
+
+	state := stateST{}
+	l := len(runesxml)
+	i := 0
+
+outerloop:
+	for i = 0; i < l; i++ {
+		r := runesxml[i]
+
+		// TODO - remove this debug shit
+		s := string(r)
+		window := string(runesxml[maxi(0, i-10):mini(i+10, l)])
+		fmt.Print(s, window)
+
+		if r == '<' {
+			if state.inT {
+				// get the string and put it into the shared strings
+				shs := newSharedString()
+				*shs.s = html.UnescapeString(state.bufString.String())
+				zi.sharedStrings.add(shs)
+				state.inSI = false
+				state.inT = false
+				state.bufString.Reset()
+			} else if state.inSI {
+				// check if we are getting a <t>
+				if string(runesxml[i:mini(i+2, l)]) == "<t" {
+					for ; i < l && runesxml[i] != '>'; i++ {
+						// just advance the position
+					}
+					if runesxml[i] == '>' {
+						state.inT = true
+						continue outerloop
+					}
+				}
+			} else {
+				// check if we are getting a <si>
+				peek := string(runesxml[i:mini(i+3, l)])
+				if peek == "<si" {
+					for ; i < l && runesxml[i] != '>'; i++ {
+						// just advance the position
+					}
+					if runesxml[i] == '>' {
+						state.inSI = true
+						continue outerloop
+					}
+				}
+			}
+		} else if state.inT {
+			state.bufString.WriteRune(r)
+		}
+	}
+
+	if state.inT {
+		// get the string and put it into the shared strings
+		shs := newSharedString()
+		*shs.s = html.UnescapeString(state.bufString.String())
+		zi.sharedStrings.add(shs)
+		state.inSI = false
+		state.inT = false
+		state.bufString.Reset()
+	}
+
+	return zi, nil
+}
+
+func mini(a, b int) int {
+	if a < b {
+		return a
+	}
+
+	return b
+}
+
+func maxi(a, b int) int {
+	if a > b {
+		return a
+	}
+
+	return b
+}
+
+func zparseSheetMetadata(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
+	//<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+	//<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+	//<Relationship Id="rId3" Target="worksheets/sheet3.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>
+	//<Relationship Id="rId2" Target="worksheets/sheet2.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>
+	//<Relationship Id="rId1" Target="worksheets/sheet1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>
+	//<Relationship Id="rId6" Target="sharedStrings.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings"/>
+	//<Relationship Id="rId5" Target="styles.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"/>
+	//<Relationship Id="rId4" Target="theme/theme1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"/>
+	//</Relationships>
 	return zi, nil
 }

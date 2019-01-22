@@ -103,6 +103,11 @@ func TestRemoveLeadingSlashRemove(t *testing.T) {
 	}
 }
 
+func TestUseFunction(t *testing.T) {
+	x := 1
+	use(x)
+}
+
 //func removeLeadingSlash(instr string) (outstr string) {
 //	if len(instr) == 0 {
 //		return instr

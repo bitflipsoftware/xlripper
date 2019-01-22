@@ -97,3 +97,109 @@ func TestShFindRow(t *testing.T) {
 		t.Error(tfail(tn, stmt, got, want))
 	}
 }
+
+func TestShAdvanceBad(t *testing.T) {
+	tn := "TestShAdvanceBad"
+	runes := ""
+	start := -1
+	r := '<'
+	expected := -1
+	actual := shadvance([]rune(runes), start, r)
+	stmt := fmt.Sprintf("shadvance('%s', %d, '%s')", runes, start, string(r))
+	got := itos(actual)
+	want := itos(expected)
+
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+	}
+}
+
+func TestShAdvanceGood(t *testing.T) {
+	tn := "TestShAdvanceGood"
+	runes := " ü Hello Günter"
+	start := 2
+	r := 'ü'
+	expected := 10
+	actual := shadvance([]rune(runes), start, r)
+	stmt := fmt.Sprintf("shadvance('%s', %d, '%s')", runes, start, string(r))
+	got := itos(actual)
+	want := itos(expected)
+
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+	}
+}
+
+func TestShAdvanceNotFound(t *testing.T) {
+	tn := "TestShAdvanceGood"
+	runes := " ü Hello Günter"
+	start := 2
+	r := 'x'
+	expected := -1
+	actual := shadvance([]rune(runes), start, r)
+	stmt := fmt.Sprintf("shadvance('%s', %d, '%s')", runes, start, string(r))
+	got := itos(actual)
+	want := itos(expected)
+
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+	}
+}
+
+func TestShBadA(t *testing.T) {
+	tn := "TestShBadA"
+	ix := -1
+	runes := "abc"
+	expected := true
+	actual := shbad([]rune(runes), ix)
+	stmt := fmt.Sprintf("shbad('%s', %d)", runes, ix)
+	got := btos(actual)
+	want := btos(expected)
+
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+	}
+}
+
+func TestShBadB(t *testing.T) {
+	tn := "TestShBadB"
+	ix := 3
+	runes := "abc"
+	expected := true
+	actual := shbad([]rune(runes), ix)
+	stmt := fmt.Sprintf("shbad('%s', %d)", runes, ix)
+	got := btos(actual)
+	want := btos(expected)
+
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+	}
+}
+
+func TestShBadC(t *testing.T) {
+	tn := "TestShBadC"
+	ix := 2
+	runes := "abc"
+	expected := false
+	actual := shbad([]rune(runes), ix)
+	stmt := fmt.Sprintf("shbad('%s', %d)", runes, ix)
+	got := btos(actual)
+	want := btos(expected)
+
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+	}
+}
+
+func TestShTagStart(t *testing.T) {
+	type input struct {
+		xml      string
+		tagName  string
+		expectedOpen int
+		expepectedClose int
+	}
+
+	inputs := []input{
+		input{"sg07< bloopsgn<jk:bloop >dfsg978sg9<><><><SFG", "bloop", 15, 24}
+	}
+}

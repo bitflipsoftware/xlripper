@@ -58,6 +58,25 @@ func shload(meta sheetMeta) ([]rune, error) {
 	return []rune(data), nil
 }
 
+// shadvance starts at 'start' and advances until it finds 'r' then returns the index of 'r'. returns -1 if 'r' is not
+// found
+func shadvance(runes []rune, start int, r rune) int {
+	e := len(runes)
+	ix := start
+
+	if start < 0 {
+		return -1
+	}
+
+	for ; ix < e; ix++ {
+		if runes[ix] == r {
+			return ix
+		}
+	}
+
+	return -1
+}
+
 // shfind row starts at 'start' looks ahead to find the first and last indices of a <row> tag. it return the first and
 // last indices of the row tag. that is, if you take data[first:last+1] you will get exactly the complete row tag.
 // a return of -1, -1 indicates that there was no row found
@@ -71,8 +90,10 @@ func shfindRow(runes []rune, start int) (int, int) {
 
 startTagLoop:
 	for {
-		for ; ix < end && runes[ix] != '<'; ix++ {
-			first = ix
+		ix = shadvance(runes, start, '<')
+
+		if shbad(runes, ix) {
+			return -1, -1
 		}
 
 		// TODO - remove this debugging
@@ -285,4 +306,22 @@ func shdebug(runes []rune, index, window int) string {
 	}
 
 	return string(runes[a:b])
+}
+
+// shbad returns true if the index is out of range
+func shbad(runes []rune, ix int) bool {
+	if ix < 0 {
+		return true
+	}
+
+	if ix >= len(runes) {
+		return true
+	}
+
+	return false
+}
+
+// shTagStart returns the start of an element matching elem, -1 if not found
+func shTagStart(runes []rune, start int, elem string) int {
+	return -1
 }

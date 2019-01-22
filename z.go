@@ -425,7 +425,6 @@ func zparseWorkbook(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 
 func zparseSheetMetadata(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 	// Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"
-
 	zi.sheetMeta = make([]sheetMeta, 0)
 
 	for _, rel := range zi.wkbkRels.Rels {

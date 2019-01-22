@@ -86,12 +86,11 @@ startTagLoop:
 			return -1, -1
 		}
 
-		cur := runes[ix]
-
 		// skip any namespace
-		for ; ix < end && cur != ':'; ix++ {
+		for ; ix < end && runes[ix] != ':' && runes[ix] != 'r' && runes[ix] != '>'; ix++ {
+			str := string(runes[ix])
+			use(str)
 			// TODO - remove this debugging
-			cur = runes[ix]
 			peekRune := shdebug(runes, ix, 1)
 			use(peekRune)
 		}
@@ -100,9 +99,9 @@ startTagLoop:
 			return -1, -1
 		}
 
-		//for ; ix < end && cur != ':' && cur != 'r' && cur != '>' && cur != ' ' && cur != '=' && cur != '"'; ix++ {
+		//for ; ix < end && runes[ix] != ':' && runes[ix] != 'r' && runes[ix] != '>' && runes[ix] != ' ' && runes[ix] != '=' && runes[ix] != '"'; ix++ {
 		//	// TODO - remove this debugging
-		//	cur = runes[ix]
+		//
 		//	peekRune := shdebug(runes, ix, 1)
 		//	use(peekRune)
 		//}
@@ -111,11 +110,10 @@ startTagLoop:
 		//	return -1, -1
 		//}
 
-		cur = runes[ix]
-		if cur == ':' {
+		if runes[ix] == ':' {
 			ix++
 		}
-		//else if cur == '>' {
+		//else if runes[ix] == '>' {
 		//	continue startTagLoop
 		//}
 
@@ -124,13 +122,17 @@ startTagLoop:
 		}
 
 		// check for 'row '
-		if cur != 'r' {
+		if runes[ix] != 'r' {
+			continue startTagLoop
+		}
+
+		if (ix-1 < 0) || ((runes[ix-1] != ':') && (runes[ix-1] != '<')) {
 			continue startTagLoop
 		}
 
 		ix++
 		// TODO - remove this debugging
-		cur = runes[ix]
+
 		peekRune := shdebug(runes, ix, 1)
 		use(peekRune)
 
@@ -138,9 +140,7 @@ startTagLoop:
 			return -1, -1
 		}
 
-		cur = runes[ix]
-
-		if cur != 'o' {
+		if runes[ix] != 'o' {
 			continue startTagLoop
 		}
 
@@ -150,9 +150,7 @@ startTagLoop:
 			return -1, -1
 		}
 
-		cur = runes[ix]
-
-		if cur != 'w' {
+		if runes[ix] != 'w' {
 			continue startTagLoop
 		}
 
@@ -162,9 +160,7 @@ startTagLoop:
 			return -1, -1
 		}
 
-		cur = runes[ix]
-
-		if cur != ' ' && cur != '>' {
+		if runes[ix] != ' ' && runes[ix] != '>' {
 			continue startTagLoop
 		}
 
@@ -193,9 +189,7 @@ closeTagLoop:
 			return -1, -1
 		}
 
-		cur := runes[ix]
-
-		if cur != '/' {
+		if runes[ix] != '/' {
 			// this is not a close tag
 			continue closeTagLoop
 		}
@@ -207,11 +201,9 @@ closeTagLoop:
 			return -1, -1
 		}
 
-		cur = runes[ix]
-
-		for ; ix < end && cur != ':' && cur != 'r' && cur != '>' && cur != '=' && cur != '"'; ix++ {
+		for ; ix < end && runes[ix] != ':' && runes[ix] != 'r' && runes[ix] != '>' && runes[ix] != '=' && runes[ix] != '"'; ix++ {
 			// TODO - remove this debugging
-			cur = runes[ix]
+
 			peekRune := shdebug(runes, ix, 1)
 			use(peekRune)
 		}
@@ -221,10 +213,9 @@ closeTagLoop:
 			return -1, -1
 		}
 
-		cur = runes[ix]
-		if cur == ':' {
+		if runes[ix] == ':' {
 			ix++
-		} else if cur == '>' {
+		} else if runes[ix] == '>' {
 			continue closeTagLoop
 		}
 
@@ -233,7 +224,7 @@ closeTagLoop:
 		}
 
 		// check for 'row '
-		if cur != 'r' {
+		if runes[ix] != 'r' {
 			continue closeTagLoop
 		}
 
@@ -243,9 +234,7 @@ closeTagLoop:
 			return -1, -1
 		}
 
-		cur = runes[ix]
-
-		if cur != 'o' {
+		if runes[ix] != 'o' {
 			continue closeTagLoop
 		}
 
@@ -255,21 +244,19 @@ closeTagLoop:
 			return -1, -1
 		}
 
-		cur = runes[ix]
-
-		if cur != 'w' {
+		if runes[ix] != 'w' {
 			continue closeTagLoop
 		}
 
 		ix++
 
-		for ; ix < end && cur != '>'; ix++ {
-			cur = runes[ix]
+		for ; ix < end && runes[ix] != '>'; ix++ {
+
 		}
 
 		if done(ix, end) {
 			return -1, -1
-		} else if cur != '>' {
+		} else if runes[ix] != '>' {
 			return -1, -1
 		}
 

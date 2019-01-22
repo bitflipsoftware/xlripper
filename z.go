@@ -31,7 +31,8 @@ type zinfo struct {
 	rels               xmlprivate.Rels
 	wkbkName           string
 	wkbkIndex          int
-	wkbk               *zip.File
+	wkbk               xmlprivate.Workbook
+	wkbkFile           *zip.File
 	wkbkRelsName       string
 	wkbkRelsIndex      int
 	wkbkRelsFile       *zip.File
@@ -99,6 +100,12 @@ func zinit(zr *zip.Reader) (z zstruct, err error) {
 	}
 
 	z.info, err = zparseSharedStrings(zr, z.info)
+
+	if err != nil {
+		return zstruct{}, err
+	}
+
+	z.info, err = zparseWorkbook(zr, z.info)
 
 	if err != nil {
 		return zstruct{}, err
@@ -185,7 +192,7 @@ func zparseWorkbookLocation(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 		return zi, errors.New("the workbook could not be found")
 	}
 
-	zi.wkbk = zr.File[zi.wkbkIndex]
+	zi.wkbkFile = zr.File[zi.wkbkIndex]
 	return zi, nil
 }
 
@@ -393,6 +400,29 @@ outerloop:
 	return zi, nil
 }
 
+func zparseWorkbook(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
+	xstruct := xmlprivate.Workbook{}
+	fbuf := bytes.Buffer{}
+	fwrite := bufio.NewWriter(&fbuf)
+	ofile, err := zi.wkbkFile.Open()
+
+	if err != nil {
+		return zi, err
+	} else {
+		defer ofile.Close()
+	}
+
+	io.Copy(fwrite, ofile)
+	err = xml.Unmarshal(fbuf.Bytes(), &xstruct)
+
+	if err != nil {
+		return zi, err
+	}
+
+	zi.wkbk = xstruct
+	return zi, nil
+}
+
 func zparseSheetMetadata(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 	// Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"
 
@@ -408,8 +438,8 @@ func zparseSheetMetadata(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 
 		relName := rel.Target
 		sh := sheetMeta{}
-		sh.name = joinWithWkbkPath(zi.wkbkName, relName)
-		sh.fileIndex = zfind(zr, sh.name)
+		sh.sheetName = joinWithWkbkPath(zi.wkbkName, relName)
+		sh.fileIndex = zfind(zr, sh.sheetName)
 
 		if sh.fileIndex < 0 || sh.fileIndex >= len(zr.File) {
 			continue
@@ -417,11 +447,20 @@ func zparseSheetMetadata(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 
 		sh.file = zr.File[sh.fileIndex]
 
-		// TODO - inspect the workbook to get the name of the sheet and the sheet index
-		panic("this function isn't done being implemented")
+		// find the matching relID in the workbook
+		sheetIndex, wsh := zi.wkbk.FindSheetByRelID(rel.ID)
 
+		if sheetIndex < 0 {
+			continue
+		}
+
+		sh.sheetIndex = sheetIndex
+		sh.sheetName = wsh.Name
+		sh.relsID = wsh.RelsID
+		sh.sheetID = wsh.SheetID
 		zi.sheetMeta = append(zi.sheetMeta, sh)
 	}
 
+	sheetMetas(zi.sheetMeta).sort()
 	return zi, nil
 }

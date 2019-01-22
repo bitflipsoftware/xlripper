@@ -87,7 +87,7 @@ func TestZ(t *testing.T) {
 	}
 
 	// see if the workbook was found
-	got = btos(z.info.wkbk == nil)
+	got = btos(z.info.wkbkFile == nil)
 	want = btos(false)
 
 	if got != want {

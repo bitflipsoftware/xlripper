@@ -409,8 +409,14 @@ func zparseSheetMetadata(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 		relName := rel.Target
 		sh := sheetMeta{}
 		sh.name = joinWithWkbkPath(zi.wkbkName, relName)
+		sh.fileIndex = zfind(zr, sh.name)
 
-		// TODO - find the sheet *zip.File
+		if sh.fileIndex < 0 || sh.fileIndex >= len(zr.File) {
+			continue
+		}
+
+		sh.file = zr.File[sh.fileIndex]
+
 		// TODO - inspect the workbook to get the name of the sheet and the sheet index
 		panic("this function isn't done being implemented")
 

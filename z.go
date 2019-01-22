@@ -9,8 +9,6 @@ import (
 	"fmt"
 	"html"
 	"io"
-	"path"
-	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -33,7 +31,8 @@ type zinfo struct {
 	rels               xmlprivate.Rels
 	wkbkName           string
 	wkbkIndex          int
-	wkbk               *zip.File
+	wkbk               xmlprivate.Workbook
+	wkbkFile           *zip.File
 	wkbkRelsName       string
 	wkbkRelsIndex      int
 	wkbkRelsFile       *zip.File
@@ -42,6 +41,7 @@ type zinfo struct {
 	sharedStringsName  string
 	sharedStringsFile  *zip.File
 	sharedStrings      sharedStrings
+	sheetMeta          []sheetMeta
 }
 
 // zstruct represents the zip file reader and metadata about what was found in the xlsx package
@@ -100,6 +100,12 @@ func zinit(zr *zip.Reader) (z zstruct, err error) {
 	}
 
 	z.info, err = zparseSharedStrings(zr, z.info)
+
+	if err != nil {
+		return zstruct{}, err
+	}
+
+	z.info, err = zparseWorkbook(zr, z.info)
 
 	if err != nil {
 		return zstruct{}, err
@@ -186,20 +192,8 @@ func zparseWorkbookLocation(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 		return zi, errors.New("the workbook could not be found")
 	}
 
-	zi.wkbk = zr.File[zi.wkbkIndex]
+	zi.wkbkFile = zr.File[zi.wkbkIndex]
 	return zi, nil
-}
-
-func wkbkRelsPath(wkbkPath string) (wkbkRelsPath string) {
-	dir := filepath.Dir(wkbkPath)
-	path := path.Join(dir, strWorkbookRels)
-	return path
-}
-
-func joinWithWkbkPath(zi zinfo, relPath string) string {
-	dir := filepath.Dir(zi.wkbkName)
-	path := path.Join(dir, removeLeadingSlash(relPath))
-	return path
 }
 
 func zfind(zr *zip.Reader, filename string) (index int) {
@@ -221,28 +215,6 @@ func zfind(zr *zip.Reader, filename string) (index int) {
 	}
 
 	return -1
-}
-
-func removeLeadingSlash(instr string) (outstr string) {
-	if len(instr) == 0 {
-		return instr
-	} else if len(instr) == 1 && instr == "/" {
-		return ""
-	} else if len(instr) == 1 && instr != "/" {
-		return instr
-	}
-
-	var first rune
-	for _, r := range instr {
-		first = r
-		break
-	}
-
-	if first == '/' {
-		return instr[1:]
-	}
-
-	return instr
 }
 
 func zparseRels(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
@@ -338,7 +310,7 @@ func zparseSharedStrings(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 		return zi, nil
 	}
 
-	zi.sharedStringsName = joinWithWkbkPath(zi, zi.wkbkRels.Rels[index].Target)
+	zi.sharedStringsName = joinWithWkbkPath(zi.wkbkName, zi.wkbkRels.Rels[index].Target)
 	zi.sharedStringsIndex = zfind(zr, zi.sharedStringsName)
 
 	if zi.sharedStringsIndex < 0 {
@@ -428,31 +400,66 @@ outerloop:
 	return zi, nil
 }
 
-func mini(a, b int) int {
-	if a < b {
-		return a
+func zparseWorkbook(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
+	xstruct := xmlprivate.Workbook{}
+	fbuf := bytes.Buffer{}
+	fwrite := bufio.NewWriter(&fbuf)
+	ofile, err := zi.wkbkFile.Open()
+
+	if err != nil {
+		return zi, err
+	} else {
+		defer ofile.Close()
 	}
 
-	return b
-}
+	io.Copy(fwrite, ofile)
+	err = xml.Unmarshal(fbuf.Bytes(), &xstruct)
 
-func maxi(a, b int) int {
-	if a > b {
-		return a
+	if err != nil {
+		return zi, err
 	}
 
-	return b
+	zi.wkbk = xstruct
+	return zi, nil
 }
 
 func zparseSheetMetadata(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
-	//<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-	//<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-	//<Relationship Id="rId3" Target="worksheets/sheet3.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>
-	//<Relationship Id="rId2" Target="worksheets/sheet2.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>
-	//<Relationship Id="rId1" Target="worksheets/sheet1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"/>
-	//<Relationship Id="rId6" Target="sharedStrings.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings"/>
-	//<Relationship Id="rId5" Target="styles.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles"/>
-	//<Relationship Id="rId4" Target="theme/theme1.xml" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme"/>
-	//</Relationships>
+	// Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet"
+	zi.sheetMeta = make([]sheetMeta, 0)
+
+	for _, rel := range zi.wkbkRels.Rels {
+		rx, _ := regexp.Compile(`/worksheet$`)
+		match := rx.Match([]byte(rel.Type))
+
+		if !match {
+			continue
+		}
+
+		relName := rel.Target
+		sh := sheetMeta{}
+		sh.sheetName = joinWithWkbkPath(zi.wkbkName, relName)
+		sh.fileIndex = zfind(zr, sh.sheetName)
+
+		if sh.fileIndex < 0 || sh.fileIndex >= len(zr.File) {
+			continue
+		}
+
+		sh.file = zr.File[sh.fileIndex]
+
+		// find the matching relID in the workbook
+		sheetIndex, wsh := zi.wkbk.FindSheetByRelID(rel.ID)
+
+		if sheetIndex < 0 {
+			continue
+		}
+
+		sh.sheetIndex = sheetIndex
+		sh.sheetName = wsh.Name
+		sh.relsID = wsh.RelsID
+		sh.sheetID = wsh.SheetID
+		zi.sheetMeta = append(zi.sheetMeta, sh)
+	}
+
+	sheetMetas(zi.sheetMeta).sort()
 	return zi, nil
 }

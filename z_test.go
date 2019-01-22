@@ -32,21 +32,21 @@ func TestZ(t *testing.T) {
 	want := itos(0)
 
 	if got != want {
-		t.Error(tfail(tn, "itos(z.info.contentTypesIndex)", got, want))
+		t.Error(tfail(tn, "z.info.contentTypesIndex", got, want))
 	}
 
 	got = itos(len(z.info.contentTypes.Defaults))
 	want = itos(2)
 
 	if got != want {
-		t.Error(tfail(tn, "itos(len(z.info.contentTypes.Defaults))", got, want))
+		t.Error(tfail(tn, "len(z.info.contentTypes.Defaults", got, want))
 	}
 
 	got = itos(len(z.info.contentTypes.Overrides))
 	want = itos(9)
 
 	if got != want {
-		t.Error(tfail(tn, "itos(len(z.info.contentTypes.Overrides))", got, want))
+		t.Error(tfail(tn, "len(z.info.contentTypes.Overrides", got, want))
 	}
 
 	// check the parsing of the rels file
@@ -61,7 +61,7 @@ func TestZ(t *testing.T) {
 	want = itos(3)
 
 	if got != want {
-		t.Error(tfail(tn, "len(z.info.rels.Rels)", got, want))
+		t.Error(tfail(tn, "z.info.rels.Rels", got, want))
 		return // we might panic if this is not correct
 	}
 
@@ -87,7 +87,7 @@ func TestZ(t *testing.T) {
 	}
 
 	// see if the workbook was found
-	got = btos(z.info.wkbk == nil)
+	got = btos(z.info.wkbkFile == nil)
 	want = btos(false)
 
 	if got != want {
@@ -139,5 +139,131 @@ func TestZ(t *testing.T) {
 		if got != want {
 			t.Error(tfail(tn, "z.info.sharedStrings.get(ix)", got, want))
 		}
+	}
+
+	// check the worksheet meta
+	got = itos(len(z.info.sheetMeta))
+	want = itos(3)
+
+	if got != want {
+		t.Error(tfail(tn, "len(z.info.sheetMeta)", got, want))
+		return // we could panic if this is not right
+	}
+
+	////////////////////////// sheet ix 0
+	sheetIndex := 0
+	sheet := z.info.sheetMeta[sheetIndex]
+	reslID := "rId1"
+	sheetID := "1"
+	sheetName := "^^^^ gs"
+
+	got = itos(sheet.sheetIndex)
+	want = itos(sheetIndex)
+
+	if got != want {
+		t.Error(tfail(tn, "sheet.sheetIndex", got, want))
+		return // we could panic if this is not right
+	}
+
+	got = sheet.relsID
+	want = reslID
+
+	if got != want {
+		t.Error(tfail(tn, "sheet.reslID", got, want))
+		return // we could panic if this is not right
+	}
+
+	got = sheet.sheetID
+	want = sheetID
+
+	if got != want {
+		t.Error(tfail(tn, "sheet.sheetID", got, want))
+		return // we could panic if this is not right
+	}
+
+	got = sheet.sheetName
+	want = sheetName
+
+	if got != want {
+		t.Error(tfail(tn, "sheet.sheetName", got, want))
+		return // we could panic if this is not right
+	}
+
+	////////////////////////// sheet ix 1
+	sheetIndex = 1
+	sheet = z.info.sheetMeta[sheetIndex]
+	reslID = "rId2"
+	sheetID = "2"
+	sheetName = "$$$ n@"
+
+	got = itos(sheet.sheetIndex)
+	want = itos(sheetIndex)
+
+	if got != want {
+		t.Error(tfail(tn, "sheet.sheetIndex", got, want))
+		return // we could panic if this is not right
+	}
+
+	got = sheet.relsID
+	want = reslID
+
+	if got != want {
+		t.Error(tfail(tn, "sheet.reslID", got, want))
+		return // we could panic if this is not right
+	}
+
+	got = sheet.sheetID
+	want = sheetID
+
+	if got != want {
+		t.Error(tfail(tn, "sheet.sheetID", got, want))
+		return // we could panic if this is not right
+	}
+
+	got = sheet.sheetName
+	want = sheetName
+
+	if got != want {
+		t.Error(tfail(tn, "sheet.sheetName", got, want))
+		return // we could panic if this is not right
+	}
+
+	////////////////////////// sheet ix 2
+	sheetIndex = 2
+	sheet = z.info.sheetMeta[sheetIndex]
+	reslID = "rId3"
+	sheetID = "3"
+	sheetName = "7359365"
+
+	got = itos(sheet.sheetIndex)
+	want = itos(sheetIndex)
+
+	if got != want {
+		t.Error(tfail(tn, "sheet.sheetIndex", got, want))
+		return // we could panic if this is not right
+	}
+
+	got = sheet.relsID
+	want = reslID
+
+	if got != want {
+		t.Error(tfail(tn, "sheet.reslID", got, want))
+		return // we could panic if this is not right
+	}
+
+	got = sheet.sheetID
+	want = sheetID
+
+	if got != want {
+		t.Error(tfail(tn, "sheet.sheetID", got, want))
+		return // we could panic if this is not right
+	}
+
+	got = sheet.sheetName
+	want = sheetName
+
+	if got != want {
+		t.Error(tfail(tn, "sheet.sheetName", got, want))
+		return // we could panic if this is not right
 	}
 }

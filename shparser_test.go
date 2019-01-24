@@ -193,7 +193,8 @@ func TestShBadC(t *testing.T) {
 
 type input struct {
 	xml   string
-	start int
+	first int
+	last  int
 	tag   string
 	open  indexPair
 	close indexPair
@@ -202,14 +203,16 @@ type input struct {
 var inputs = []input{
 	input{
 		xml:   "sg07< bloopsgn<jk:bloop >dfsg978sg9<><><><SFG</     bloop>",
-		start: 0,
+		first: 0,
+		last:  -1,
 		tag:   "bloop",
 		open:  indexPair{14, 24},
 		close: indexPair{45, 57},
 	},
 	input{
 		xml:   "<hello:row><row></row></ hello:row>whatever",
-		start: 0,
+		first: 0,
+		last:  -1,
 		tag:   "row",
 		open:  indexPair{0, 10},
 		close: indexPair{22, 34},
@@ -219,18 +222,87 @@ var inputs = []input{
 func TestShTagFind(t *testing.T) {
 
 	for ix, input := range inputs {
-		result := shTagOpenFind([]rune(input.xml), input.start, input.tag)
+		result := shTagOpenFind([]rune(input.xml), input.first, input.last, input.tag)
 		expected := input.open
 		if result != expected {
-			t.Error(tagFindErr(ix, expected, result))
-			continue // the close tag cannot be expected to be found without a correct starting index
+			t.Error(tagFindOpenErr(ix, expected, result))
+		}
+		start := result.last + 1
+		result = shTagCloseFind([]rune(input.xml), start, input.last, input.tag)
+		expected = input.close
+		if result != expected {
+			t.Error(tagFindCloseErr(ix, expected, result))
+		}
+
+		finalResult := shTagFind([]rune(input.xml), start, input.last, input.tag)
+		finalExpected := tagLoc{open: input.open, close: input.close}
+		if finalResult != finalExpected {
+			t.Error(tagFindErr(ix, finalExpected, finalResult))
 		}
 	}
 }
 
-func tagFindErr(index int, want, got indexPair) string {
-	statement := fmt.Sprintf("input index %d: shTagOpenFind([]rune(input.xml), input.start, input.tag)", index)
+func tagFindOpenErr(index int, want, got indexPair) string {
+	statement := fmt.Sprintf("input index %d: shTagOpenFind([]rune(input.xml), input.first, input.tag)", index)
 	gots := fmt.Sprintf("%v", got)
 	wants := fmt.Sprintf("%v", want)
 	return tfail("TestShTagFind", statement, gots, wants)
+}
+
+func tagFindCloseErr(index int, want, got indexPair) string {
+	statement := fmt.Sprintf("input index %d: tagFindCloseErr([]rune(input.xml), input.first, input.tag)", index)
+	gots := fmt.Sprintf("%v", got)
+	wants := fmt.Sprintf("%v", want)
+	return tfail("TestShTagFind", statement, gots, wants)
+}
+
+func tagFindErr(index int, want, got tagLoc) string {
+	statement := fmt.Sprintf("input index %d: tagFindErr([]rune(input.xml), input.first, input.tag)", index)
+	gots := fmt.Sprintf("%v", got)
+	wants := fmt.Sprintf("%v", want)
+	return tfail("TestShTagFind", statement, gots, wants)
+}
+
+func TestShSetLast(t *testing.T) {
+	tn := "TestShSetLast"
+	input := -13
+	runes := []rune("0123")
+	expected := 4
+	output := shSetEnd(runes, input)
+	got := itos(output)
+	want := itos(expected)
+
+	if got != want {
+		t.Error(tfail(tn, fmt.Sprintf("shSetEnd(\"%s\", %d)", string(runes), input), got, want))
+	}
+
+	input = 2
+	expected = 2
+	output = shSetEnd(runes, input)
+	got = itos(output)
+	want = itos(expected)
+
+	if got != want {
+		t.Error(tfail(tn, fmt.Sprintf("shSetEnd(\"%s\", %d)", string(runes), input), got, want))
+	}
+
+	input = 3
+	expected = 3
+	output = shSetEnd(runes, input)
+	got = itos(output)
+	want = itos(expected)
+
+	if got != want {
+		t.Error(tfail(tn, fmt.Sprintf("shSetEnd(\"%s\", %d)", string(runes), input), got, want))
+	}
+
+	input = 4
+	expected = 3
+	output = shSetEnd(runes, input)
+	got = itos(output)
+	want = itos(expected)
+
+	if got != want {
+		t.Error(tfail(tn, fmt.Sprintf("shSetEnd(\"%s\", %d)", string(runes), input), got, want))
+	}
 }

@@ -58,7 +58,7 @@ func shload(meta sheetMeta) ([]rune, error) {
 	return []rune(data), nil
 }
 
-// shadvance starts at 'start' and advances until it finds 'r' then returns the index of 'r'. returns -1 if 'r' is not
+// shadvance starts at 'first' and advances until it finds 'r' then returns the index of 'r'. returns -1 if 'r' is not
 // found
 func shadvance(runes []rune, start int, r rune) int {
 	e := len(runes)
@@ -77,7 +77,7 @@ func shadvance(runes []rune, start int, r rune) int {
 	return -1
 }
 
-// shfind row starts at 'start' looks ahead to find the first and last indices of a <row> tag. it return the first and
+// shfind row starts at 'first' looks ahead to find the first and last indices of a <row> tag. it return the first and
 // last indices of the row tag. that is, if you take data[first:last+1] you will get exactly the complete row tag.
 // a return of -1, -1 indicates that there was no row found
 func shfindRow(runes []rune, start int) (int, int) {
@@ -185,7 +185,7 @@ startTagLoop:
 			continue startTagLoop
 		}
 
-		// if we reach here then we have successfully identified the start of a <row> tag
+		// if we reach here then we have successfully identified the first of a <row> tag
 		break startTagLoop
 	}
 
@@ -322,14 +322,37 @@ func shbad(runes []rune, ix int) bool {
 }
 
 // shTagOpenFind returns the first and last indices of an element open tag with the name 'elem' (ignoring namespace).
-// {-1, -1} indicates that no matching open tag was found.
-func shTagOpenFind(runes []rune, start int, elem string) indexPair {
-	return indexPair{-1, -1}
+// {-1, -1} indicates that no matching open tag was found. 'last' is the last rune that you want inspected for a closing
+// tag. this is unlike slice indexing and more like traditional range indexing. enter -1 to go to the end of the runes.
+func shTagOpenFind(runes []rune, first, last int, elem string) indexPair {
+	e := shSetEnd(runes, last)
+	return indexPair{-e, -e}
 }
 
 // shTagCloseFind returns the first and last indices of an element close tag with the name 'elem' (ignoring namespace).
 // {-1, -1} indicates that no matching open tag was found. If elements of the same name are nested, the nested close
-// tags are skipped. 'start' must be the first rune index that is inside of the element you want to find the close for.
-func shTagCloseFind(runes []rune, start int, elem string) indexPair {
-	return indexPair{-1, -1}
+// tags are skipped. 'first' must be the first rune index that is inside of the element you want to find the close for.
+// 'last' is the last rune that you want inspected for a closing tag. this is unlike slice indexing and more like
+// traditional range indexing. enter -1 to go to the end of the runes
+func shTagCloseFind(runes []rune, first, last int, elem string) indexPair {
+	e := shSetEnd(runes, last)
+	return indexPair{-e, -e}
+}
+
+// shTagFind returns the open and close locations for the desired tag 'elem' returns -1 (somewhere) if not found.
+// 'last' is the last rune that you want inspected for a closing tag. this is unlike slice indexing and more like
+// traditional range indexing. enter -1 to go to the end of the runes
+func shTagFind(runes []rune, first, last int, elem string) tagLoc {
+	return tagLoc{indexPair{-1, -1}, indexPair{-1, -1}}
+}
+
+// shSetEnd returns a safe 'last' value for loops on 'runes'
+func shSetEnd(runes []rune, requestedLast int) int {
+	l := len(runes)
+	if requestedLast < 0 {
+		return l
+	} else if requestedLast > l-1 {
+		return l - 1
+	}
+	return requestedLast
 }

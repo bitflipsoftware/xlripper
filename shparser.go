@@ -321,7 +321,15 @@ func shbad(runes []rune, ix int) bool {
 	return false
 }
 
-// shTagStart returns the start of an element matching elem, -1 if not found
-func shTagStart(runes []rune, start int, elem string) int {
-	return -1
+// shTagOpenFind returns the first and last indices of an element open tag with the name 'elem' (ignoring namespace).
+// {-1, -1} indicates that no matching open tag was found.
+func shTagOpenFind(runes []rune, start int, elem string) indexPair {
+	return indexPair{-1, -1}
+}
+
+// shTagCloseFind returns the first and last indices of an element close tag with the name 'elem' (ignoring namespace).
+// {-1, -1} indicates that no matching open tag was found. If elements of the same name are nested, the nested close
+// tags are skipped. 'start' must be the first rune index that is inside of the element you want to find the close for.
+func shTagCloseFind(runes []rune, start int, elem string) indexPair {
+	return indexPair{-1, -1}
 }

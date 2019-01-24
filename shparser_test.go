@@ -191,15 +191,46 @@ func TestShBadC(t *testing.T) {
 	}
 }
 
-func TestShTagStart(t *testing.T) {
-	type input struct {
-		xml      string
-		tagName  string
-		expectedOpen int
-		expepectedClose int
-	}
+type input struct {
+	xml   string
+	start int
+	tag   string
+	open  indexPair
+	close indexPair
+}
 
-	inputs := []input{
-		input{"sg07< bloopsgn<jk:bloop >dfsg978sg9<><><><SFG", "bloop", 15, 24}
+var inputs = []input{
+	input{
+		xml:   "sg07< bloopsgn<jk:bloop >dfsg978sg9<><><><SFG</     bloop>",
+		start: 0,
+		tag:   "bloop",
+		open:  indexPair{14, 24},
+		close: indexPair{45, 57},
+	},
+	input{
+		xml:   "<hello:row><row></row></ hello:row>whatever",
+		start: 0,
+		tag:   "row",
+		open:  indexPair{0, 10},
+		close: indexPair{22, 34},
+	},
+}
+
+func TestShTagFind(t *testing.T) {
+
+	for ix, input := range inputs {
+		result := shTagOpenFind([]rune(input.xml), input.start, input.tag)
+		expected := input.open
+		if result != expected {
+			t.Error(tagFindErr(ix, expected, result))
+			continue // the close tag cannot be expected to be found without a correct starting index
+		}
 	}
+}
+
+func tagFindErr(index int, want, got indexPair) string {
+	statement := fmt.Sprintf("input index %d: shTagOpenFind([]rune(input.xml), input.start, input.tag)", index)
+	gots := fmt.Sprintf("%v", got)
+	wants := fmt.Sprintf("%v", want)
+	return tfail("TestShTagFind", statement, gots, wants)
 }

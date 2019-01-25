@@ -4,7 +4,11 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"unicode"
 )
+
+var badPair = indexPair{-1, -1}
+var badTagLoc = tagLoc{badPair, badPair}
 
 func shparse(zs zstruct, sheetIndex int) (Sheet, error) {
 	sh := NewSheet()
@@ -321,12 +325,102 @@ func shbad(runes []rune, ix int) bool {
 	return false
 }
 
+// shIsTag returns true if the tag matches the desired element and false if it does not. specify whether it is an open
+// tag or a close tag with isCloseTag. 'first' must be pointing to the first char 'inside' the tag, that is after '<'
+// or '</'. returns the location of the closing '>' or -1 if the tag is not well formed or does not match elem
+func shTagCompletion(runes []rune, first, last int, elem string) int {
+	e := shSetLast(runes, last)
+	ix := shSetFirst(runes, first)
+	var r rune
+	namespaceColonPos := -1
+
+findNamespaceColon:
+	for localIX := ix; localIX <= e; localIX++ {
+		r = runes[localIX]
+		shdebugchar(r)
+		shdebugrange(runes, localIX)
+		if r == '<' {
+			return -1
+		} else if r == ':' {
+			namespaceColonPos = localIX
+			break findNamespaceColon
+		} else if r == '>' {
+			break findNamespaceColon
+		}
+	}
+
+	if namespaceColonPos > 0 {
+		ix = namespaceColonPos + 1
+	}
+
+	r = runes[ix]
+	shdebugchar(r)
+	shdebugrange(runes, ix)
+
+	// we should be pointing at the first rune of the element name now
+	if ix > e || r == '<' || r == ':' || r == ' ' || r == '>' {
+		return -1
+	}
+
+	elemRunes := []rune(elem)
+	elemLen := len(elemRunes)
+	for elemIx := 0; elemIx < elemLen; elemIx++ {
+		if ix > e {
+			return -1
+		}
+		r = runes[ix]
+		if r == '>' {
+			return -1
+		} else if r == ':' {
+			return -1
+		} else if r != elemRunes[elemIx] {
+			return -1
+		}
+		ix++
+	}
+
+	// proceed to close
+	for ; ix <= e; ix++ {
+		r = runes[ix]
+		if r == '>' {
+			return ix
+		}
+	}
+
+	return -1
+}
+
 // shTagOpenFind returns the first and last indices of an element open tag with the name 'elem' (ignoring namespace).
 // {-1, -1} indicates that no matching open tag was found. 'last' is the last rune that you want inspected for a closing
 // tag. this is unlike slice indexing and more like traditional range indexing. enter -1 to go to the end of the runes.
 func shTagOpenFind(runes []rune, first, last int, elem string) indexPair {
-	e := shSetEnd(runes, last)
-	return indexPair{-e, -e}
+	e := shSetLast(runes, last)
+	ix := shSetFirst(runes, first)
+	var r rune
+	foundFirst := -1
+
+findOpenTag:
+	for ; ix <= e; ix++ {
+		r = runes[ix]
+		if r == '<' {
+			foundFirst = ix
+			break findOpenTag
+		}
+	}
+
+	ix++
+
+	if ix > e {
+		return badPair
+	}
+
+	foundLast := shTagCompletion(runes, ix, last, elem)
+
+	if foundLast <= ix {
+		return badPair
+	}
+
+	return indexPair{foundFirst, foundLast}
 }
 
 // shTagCloseFind returns the first and last indices of an element close tag with the name 'elem' (ignoring namespace).
@@ -335,8 +429,53 @@ func shTagOpenFind(runes []rune, first, last int, elem string) indexPair {
 // 'last' is the last rune that you want inspected for a closing tag. this is unlike slice indexing and more like
 // traditional range indexing. enter -1 to go to the end of the runes
 func shTagCloseFind(runes []rune, first, last int, elem string) indexPair {
-	e := shSetEnd(runes, last)
-	return indexPair{-e, -e}
+	e := shSetLast(runes, last)
+	ix := shSetFirst(runes, first)
+	var r rune
+	foundFirst := -1
+
+findTagStart:
+	for ; ix <= e; ix++ {
+		r = runes[ix]
+		if r == '<' {
+			foundFirst = ix
+			break findTagStart
+		}
+	}
+
+	ix++
+
+	if ix > e {
+		return badPair
+	}
+
+	r = runes[ix]
+
+	if r != '/' {
+		return badPair
+	}
+
+	ix++
+
+	if ix > e {
+		return badPair
+	}
+
+	for ; ix <= e && unicode.IsSpace(runes[ix]); ix++ {
+		// advance past white space
+	}
+
+	if ix > e {
+		return badPair
+	}
+
+	foundLast := shTagCompletion(runes, ix, last, elem)
+
+	if foundLast <= ix {
+		return badPair
+	}
+
+	return indexPair{foundFirst, foundLast}
 }
 
 // shTagFind returns the open and close locations for the desired tag 'elem' returns -1 (somewhere) if not found.
@@ -346,8 +485,8 @@ func shTagFind(runes []rune, first, last int, elem string) tagLoc {
 	return tagLoc{indexPair{-1, -1}, indexPair{-1, -1}}
 }
 
-// shSetEnd returns a safe 'last' value for loops on 'runes'
-func shSetEnd(runes []rune, requestedLast int) int {
+// shSetLast returns a safe 'last' value for loops on 'runes'
+func shSetLast(runes []rune, requestedLast int) int {
 	l := len(runes)
 	if requestedLast < 0 {
 		return l
@@ -355,4 +494,25 @@ func shSetEnd(runes []rune, requestedLast int) int {
 		return l - 1
 	}
 	return requestedLast
+}
+
+func shSetFirst(runes []rune, first int) int {
+	if first < 0 {
+		return 0
+	} else if first > (len(runes) - 1) {
+		return len(runes) - 1
+	}
+	return first
+}
+
+func shdebugchar(r rune) {
+	s := string(r)
+	fmt.Print(s)
+}
+
+func shdebugrange(runes []rune, currentIX int) {
+	first := shSetFirst(runes, currentIX-5)
+	last := shSetLast(runes, currentIX+5)
+	s := string(runes[first : last+1])
+	fmt.Print(s)
 }

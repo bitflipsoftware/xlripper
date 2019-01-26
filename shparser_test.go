@@ -52,32 +52,32 @@ func TestShFindRow(t *testing.T) {
 	}
 
 	next := 0
-	first := -1
-	last := -1
+	tloc := badTagLoc
 	chunk := ""
 
-	first, last = shfindRow(data, next)
+	tloc = shfindRow(data, next, len(data))
 	stmt = fmt.Sprintf("first, last = shfindRow(data, %d)", next)
-	got = itos(first)
+	got = itos(tloc.open.first)
 	want = itos(999)
 
 	if got != want {
 		t.Error(tfail(tn, stmt+"; first", got, want))
 	}
 
-	got = itos(last)
+	got = itos(tloc.open.last)
 	want = itos(1273)
 
 	if got != want {
 		t.Error(tfail(tn, stmt+"; last", got, want))
 	}
 
-	if first < 0 || first >= len(data) || last < 0 || last >= len(data) || first > last {
+	if tloc.open.first < 0 || tloc.open.first >= len(data) || tloc.open.last < 0 || tloc.open.last >= len(data) || tloc.open.first > tloc.open.last {
 		return // avoid a panic
 	}
 
-	chunk = string(data[first:last])
+	chunk = string(data[tloc.open.first:tloc.open.last])
 	if len(chunk) < 7 {
+		t.Error("expected the row we found to have some length to it")
 		return // avoid a panic
 	}
 
@@ -230,7 +230,7 @@ var inputs = []input{
 func TestShTagFind(t *testing.T) {
 
 	for ix, input := range inputs {
-		result := shTagOpenFind([]rune(input.xml), input.first, input.last, input.tag)
+		result, _ := shTagOpenFind([]rune(input.xml), input.first, input.last, input.tag)
 		expected := input.open
 		if result != expected {
 			t.Error(tagFindOpenErr(ix, expected, result))
@@ -242,11 +242,42 @@ func TestShTagFind(t *testing.T) {
 			t.Error(tagFindCloseErr(ix, expected, result))
 		}
 
-		//finalResult := shTagFind([]rune(input.xml), start, input.last, input.tag)
-		//finalExpected := tagLoc{open: input.open, close: input.close}
-		//if finalResult != finalExpected {
-		//	t.Error(tagFindErr(ix, finalExpected, finalResult))
-		//}
+		finalResult := shTagFind([]rune(input.xml), input.first, input.last, input.tag)
+		finalExpected := tagLoc{open: input.open, close: input.close}
+		if finalResult != finalExpected {
+			t.Error(tagFindErr(ix, finalExpected, finalResult))
+		}
+	}
+}
+
+func TestShTagNameFind(t *testing.T) {
+	tn := "TestShTagNameFind"
+	type tagNameFindInput struct {
+		str          string
+		first        int
+		last         int
+		expectedElem string
+		expectedLast int
+	}
+
+	inputs := []tagNameFindInput{
+		{str: "skgshj:cberoy list=\"hi\" >",
+			first:        0,
+			last:         8888,
+			expectedElem: "cberoy",
+			expectedLast: 24,
+		},
+	}
+	for _, input := range inputs {
+		elem, last := shTagNameFind([]rune(input.str), input.first, input.last)
+
+		if elem != input.expectedElem {
+			t.Errorf(tfail(tn, "elem, last := shTagNameFind([]rune(input.str), input.first, input.last) -> elem", elem, input.expectedElem))
+		}
+
+		if last != input.expectedLast {
+			t.Errorf(tfail(tn, "elem, last := shTagNameFind([]rune(input.str), input.first, input.last) -> last", itos(last), itos(input.expectedLast)))
+		}
 	}
 }
 

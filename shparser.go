@@ -10,6 +10,11 @@ import (
 var badPair = indexPair{-1, -1}
 var badTagLoc = tagLoc{badPair, badPair}
 
+const (
+	lChevron = '<'
+	rChevron = '>'
+)
+
 func shparse(zs zstruct, sheetIndex int) (Sheet, error) {
 	sh := NewSheet()
 
@@ -29,13 +34,14 @@ func shparse(zs zstruct, sheetIndex int) (Sheet, error) {
 	next := 0
 	first, last := 0, 0
 	for first != -1 && last != -1 {
-		first, last = shfindRow(data, next)
+		tloc := shfindRow(data, next, len(data))
 		if first != -1 && last != -1 {
 			rowRunes := data[first : last+1]
 			// TODO - send rune slice down a pipeline
 			// TODO - remove this debugging
 			str := string(rowRunes)
 			fmt.Print(str)
+			use(tloc)
 		}
 		next = last + 1
 	}
@@ -84,219 +90,13 @@ func shadvance(runes []rune, start int, r rune) int {
 // shfind row starts at 'first' looks ahead to find the first and last indices of a <row> tag. it return the first and
 // last indices of the row tag. that is, if you take data[first:last+1] you will get exactly the complete row tag.
 // a return of -1, -1 indicates that there was no row found
-func shfindRow(runes []rune, start int) (int, int) {
-	ix := start
-	end := len(runes)
-	done := func(current, theEnd int) bool { return current >= end }
-
-	first := ix
-	last := -1
-
-startTagLoop:
-	for {
-		ix = shadvance(runes, start, '<')
-
-		if shbad(runes, ix) {
-			return -1, -1
-		}
-
-		// TODO - remove this debugging
-		window := shdebug(runes, ix, 5)
-		use(window)
-
-		// set index to the first rune inside of the tag marker
-		ix++
-
-		if done(ix, end) {
-			return -1, -1
-		}
-
-		// skip any namespace
-		for ; ix < end && runes[ix] != ':' && runes[ix] != 'r' && runes[ix] != '>'; ix++ {
-			str := string(runes[ix])
-			use(str)
-			// TODO - remove this debugging
-			peekRune := shdebug(runes, ix, 1)
-			use(peekRune)
-		}
-
-		if done(ix, end) {
-			return -1, -1
-		}
-
-		//for ; ix < end && runes[ix] != ':' && runes[ix] != 'r' && runes[ix] != '>' && runes[ix] != ' ' && runes[ix] != '=' && runes[ix] != '"'; ix++ {
-		//	// TODO - remove this debugging
-		//
-		//	peekRune := shdebug(runes, ix, 1)
-		//	use(peekRune)
-		//}
-		//
-		//if done(ix, end) {
-		//	return -1, -1
-		//}
-
-		if runes[ix] == ':' {
-			ix++
-		}
-		//else if runes[ix] == '>' {
-		//	continue startTagLoop
-		//}
-
-		if done(ix, end) {
-			return -1, -1
-		}
-
-		// check for 'row '
-		if runes[ix] != 'r' {
-			continue startTagLoop
-		}
-
-		if (ix-1 < 0) || ((runes[ix-1] != ':') && (runes[ix-1] != '<')) {
-			continue startTagLoop
-		}
-
-		ix++
-		// TODO - remove this debugging
-
-		peekRune := shdebug(runes, ix, 1)
-		use(peekRune)
-
-		if done(ix, end) {
-			return -1, -1
-		}
-
-		if runes[ix] != 'o' {
-			continue startTagLoop
-		}
-
-		ix++
-
-		if done(ix, end) {
-			return -1, -1
-		}
-
-		if runes[ix] != 'w' {
-			continue startTagLoop
-		}
-
-		ix++
-
-		if done(ix, end) {
-			return -1, -1
-		}
-
-		if runes[ix] != ' ' && runes[ix] != '>' {
-			continue startTagLoop
-		}
-
-		// if we reach here then we have successfully identified the first of a <row> tag
-		break startTagLoop
-	}
-
-	if first == -1 {
-		panic("bug")
-	}
-
-closeTagLoop:
-	for {
-		for ; ix < end && runes[ix] != '<'; ix++ {
-			// just advance ix
-		}
-
-		// TODO - remove this debugging
-		window := shdebug(runes, ix, 5)
-		use(window)
-
-		// set index to the first rune inside of the tag marker
-		ix++
-
-		if done(ix, end) {
-			return -1, -1
-		}
-
-		if runes[ix] != '/' {
-			// this is not a close tag
-			continue closeTagLoop
-		}
-
-		// set index to the first rune after the close slash marker </
-		ix++
-
-		if done(ix, end) {
-			return -1, -1
-		}
-
-		for ; ix < end && runes[ix] != ':' && runes[ix] != 'r' && runes[ix] != '>' && runes[ix] != '=' && runes[ix] != '"'; ix++ {
-			// TODO - remove this debugging
-
-			peekRune := shdebug(runes, ix, 1)
-			use(peekRune)
-		}
-
-		// skip any namespace
-		if done(ix, end) {
-			return -1, -1
-		}
-
-		if runes[ix] == ':' {
-			ix++
-		} else if runes[ix] == '>' {
-			continue closeTagLoop
-		}
-
-		if done(ix, end) {
-			return -1, -1
-		}
-
-		// check for 'row '
-		if runes[ix] != 'r' {
-			continue closeTagLoop
-		}
-
-		ix++
-
-		if done(ix, end) {
-			return -1, -1
-		}
-
-		if runes[ix] != 'o' {
-			continue closeTagLoop
-		}
-
-		ix++
-
-		if done(ix, end) {
-			return -1, -1
-		}
-
-		if runes[ix] != 'w' {
-			continue closeTagLoop
-		}
-
-		ix++
-
-		for ; ix < end && runes[ix] != '>'; ix++ {
-
-		}
-
-		if done(ix, end) {
-			return -1, -1
-		} else if runes[ix] != '>' {
-			return -1, -1
-		}
-
-		// if we reach here then we have successfully identified the end of a </row> tag
-		last = ix - 1 // minus one because we obtained this ix from a for loop with increment which is one past cur
-		break closeTagLoop
-	}
-
-	if first == -1 {
-		panic("bug")
-	} else if last == -1 {
-		return -1, -1
-	}
-
-	return first, last
+func shfindRow(runes []rune, first, last int) tagLoc {
+	ix := shSetFirst(runes, first)
+	e := shSetLast(runes, last)
+	s := shdebug(runes, 0, 10000)
+	use(s)
+	x := shTagFind(runes, ix, e, "row")
+	return x
 }
 
 // shdebug is used in debugging to view a chunk of data as a string instead of a rune slice (i.e. so you can log it or
@@ -325,10 +125,7 @@ func shbad(runes []rune, ix int) bool {
 	return false
 }
 
-// shIsTag returns true if the tag matches the desired element and false if it does not. specify whether it is an open
-// tag or a close tag with isCloseTag. 'first' must be pointing to the first char 'inside' the tag, that is after '<'
-// or '</'. returns the location of the closing '>' or -1 if the tag is not well formed or does not match elem
-func shTagCompletion(runes []rune, first, last int, elem string) int {
+func shFindNamespaceColon(runes []rune, first, last int) int {
 	e := shSetLast(runes, last)
 	ix := shSetFirst(runes, first)
 	var r rune
@@ -337,8 +134,6 @@ func shTagCompletion(runes []rune, first, last int, elem string) int {
 findNamespaceColon:
 	for localIX := ix; localIX <= e; localIX++ {
 		r = runes[localIX]
-		shdebugchar(r)
-		shdebugrange(runes, localIX)
 		if r == '<' {
 			return -1
 		} else if r == ':' {
@@ -349,6 +144,19 @@ findNamespaceColon:
 		}
 	}
 
+	return namespaceColonPos
+}
+
+// shIsTag returns true if the tag matches the desired element and false if it does not. specify whether it is an open
+// tag or a close tag with isCloseTag. 'first' must be pointing to the first char 'inside' the tag, that is after '<'
+// or '</'. returns the location of the closing '>' or -1 if the tag is not well formed or does not match elem
+func shTagCompletion(runes []rune, first, last int, elem string) int {
+	e := shSetLast(runes, last)
+	ix := shSetFirst(runes, first)
+	var r rune
+	peek := shdebug(runes, ix, 3)
+	use(peek)
+	namespaceColonPos := shFindNamespaceColon(runes, ix, e)
 	if namespaceColonPos > 0 {
 		ix = namespaceColonPos + 1
 	}
@@ -393,7 +201,7 @@ findNamespaceColon:
 // shTagOpenFind returns the first and last indices of an element open tag with the name 'elem' (ignoring namespace).
 // {-1, -1} indicates that no matching open tag was found. 'last' is the last rune that you want inspected for a closing
 // tag. this is unlike slice indexing and more like traditional range indexing. enter -1 to go to the end of the runes.
-func shTagOpenFind(runes []rune, first, last int, elem string) indexPair {
+func shTagOpenFind(runes []rune, first, last int, elem string) (found indexPair, lastCheckedIndex int) {
 	e := shSetLast(runes, last)
 	ix := shSetFirst(runes, first)
 	var r rune
@@ -411,16 +219,18 @@ findOpenTag:
 	ix++
 
 	if ix > e {
-		return badPair
+		return badPair, ix
 	}
 
-	foundLast := shTagCompletion(runes, ix, last, elem)
+	peek := shdebug(runes, ix, 3)
+	use(peek)
+	foundLast := shTagCompletion(runes, ix, e, elem)
 
 	if foundLast <= ix {
-		return badPair
+		return badPair, ix
 	}
 
-	return indexPair{foundFirst, foundLast}
+	return indexPair{foundFirst, foundLast}, ix
 }
 
 // shTagCloseFind returns the first and last indices of an element close tag with the name 'elem' (ignoring namespace).
@@ -434,12 +244,12 @@ func shTagCloseFind(runes []rune, first, last int, elem string) indexPair {
 	var r rune
 	foundFirst := -1
 
-findTagStart:
+findLeftChevron:
 	for ; ix <= e; ix++ {
 		r = runes[ix]
 		if r == '<' {
 			foundFirst = ix
-			break findTagStart
+			break findLeftChevron
 		}
 	}
 
@@ -452,7 +262,44 @@ findTagStart:
 	r = runes[ix]
 
 	if r != '/' {
-		return badPair
+		localElemName, localElemLast := shTagNameFind(runes, ix, e)
+
+		if len(localElemName) == 0 || localElemLast < 0 {
+			return badPair
+		}
+
+		ix = localElemLast
+
+		if runes[ix] != rChevron {
+			return badPair
+		}
+
+		ix++
+
+		if ix > e {
+			return badPair
+		}
+
+		peek := shdebug(runes, ix, 3)
+		use(peek)
+		// now we are inside of a nested element
+		nestedCloseLoc := shTagCloseFind(runes, ix, e, localElemName)
+
+		if nestedCloseLoc == badPair {
+			return badPair
+		}
+
+		ix = nestedCloseLoc.last
+		ix++
+
+		if ix > e {
+			return badPair
+		}
+
+		// now we have advanced beyond the nested element
+		// we need to call ourself again to find the closing tag
+		localFoundPair := shTagCloseFind(runes, ix, e, elem)
+		return localFoundPair
 	}
 
 	ix++
@@ -482,7 +329,27 @@ findTagStart:
 // 'last' is the last rune that you want inspected for a closing tag. this is unlike slice indexing and more like
 // traditional range indexing. enter -1 to go to the end of the runes
 func shTagFind(runes []rune, first, last int, elem string) tagLoc {
-	return tagLoc{indexPair{-1, -1}, indexPair{-1, -1}}
+	ix := shSetFirst(runes, first)
+	e := shSetLast(runes, last)
+	open := badPair
+
+	for ; ix <= e && open == badPair; ix++ {
+		s := shdebug(runes, ix, 20)
+		use(s)
+		open, ix = shTagOpenFind(runes, ix, e, elem)
+	}
+
+	if open == badPair {
+		return badTagLoc
+	}
+
+	close := shTagCloseFind(runes, open.last+1, last, elem)
+
+	if close == badPair {
+		return badTagLoc
+	}
+
+	return tagLoc{open, close}
 }
 
 // shSetLast returns a safe 'last' value for loops on 'runes'
@@ -515,4 +382,56 @@ func shdebugrange(runes []rune, currentIX int) {
 	last := shSetLast(runes, currentIX+5)
 	s := string(runes[first : last+1])
 	fmt.Print(s)
+}
+
+// shTagNameFind returns the name of an element and the position of the close '>' for that element. 'first' should be
+// pointing at the first rune after '<' or '</'. if the element cannot be parsed, -1 is returned for 'lastPos'
+func shTagNameFind(runes []rune, first, last int) (elem string, lastPos int) {
+	e := shSetLast(runes, last)
+	ix := shSetFirst(runes, first)
+
+	for ; ix <= e && runes[ix] == ' '; ix++ {
+		// advance the index
+	}
+
+	if ix > e {
+		return "", -1
+	} else if runes[ix] == ' ' {
+		ix++
+	}
+
+	if ix > e {
+		return "", -1
+	}
+
+	namespaceColonPos := shFindNamespaceColon(runes, ix, e)
+	if namespaceColonPos >= 0 {
+		ix = namespaceColonPos + 1
+	}
+
+	strbuf := bytes.Buffer{}
+
+	for ; ix <= e && runes[ix] != ' ' && runes[ix] != '>' && runes[ix] != '=' && runes[ix] != '"'; ix++ {
+		strbuf.WriteRune(runes[ix])
+	}
+
+	elem = strbuf.String()
+
+	if len(elem) == 0 {
+		return "", -1
+	}
+
+	if ix > e {
+		return "", -1
+	}
+
+	for ; ix <= e && runes[ix] != '>'; ix++ {
+		// advance ix to find the closing of the tag
+	}
+
+	if runes[ix] == '>' {
+		return elem, ix
+	}
+
+	return "", -1
 }

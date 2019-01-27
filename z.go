@@ -12,7 +12,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/bitflip-software/xlsx/xmlprivate"
+	"github.com/bitflip-software/xlripper/xmlprivate"
 )
 
 const (

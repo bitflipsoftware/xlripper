@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bitflip-software/xlsx/xmlprivate"
+	"github.com/bitflip-software/xlripper/xmlprivate"
 )
 
 var rowRoutines = runtime.NumCPU()

@@ -1,5 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Test" type="GoTestRunConfiguration" factoryName="Go Test">
+    <module name="xlripper" />
     <working_directory value="$PROJECT_DIR$/" />
     <go_parameters value="-i" />
     <framework value="gotest" />

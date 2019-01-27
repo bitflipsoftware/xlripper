@@ -201,7 +201,6 @@ func TestShParserBasics(t *testing.T) {
 	} else {
 		got = *cell
 		gotF, err := strconv.ParseFloat(got, 64)
-		use(gotF)
 
 		if err != nil {
 			t.Errorf("error trying to parse %s as a float: %s", got, err.Error())
@@ -246,7 +245,6 @@ func TestShParserBasics(t *testing.T) {
 	} else {
 		got = *cell
 		gotF, err := strconv.ParseFloat(got, 64)
-		use(gotF)
 
 		if err != nil {
 			t.Errorf("error trying to parse %s as a float: %s", got, err.Error())
@@ -286,30 +284,32 @@ func TestShFindRow(t *testing.T) {
 	}
 
 	next := 0
-	tloc := badPair
+	openTag := badPair
+	closeTag := badPair
 	chunk := ""
 
-	tloc = shFindFirstOccurenceOfElement(data, next, len(data), "row")
+	openTag = shFindFirstOccurenceOfElement(data, next, len(data), "row")
+	closeTag = shTagCloseFind(data, openTag.last+1, len(data), "row")
 	stmt = fmt.Sprintf("first, last = shFindFirstOccurenceOfElement(data, %d)", next)
-	got = itos(tloc.first)
+	got = itos(openTag.first)
 	want = itos(999)
 
 	if got != want {
 		t.Error(tfail(tn, stmt+"; first", got, want))
 	}
 
-	got = itos(tloc.last)
+	got = itos(openTag.last)
 	want = itos(1044)
 
 	if got != want {
 		t.Error(tfail(tn, stmt+"; last", got, want))
 	}
 
-	if tloc.first < 0 || tloc.first >= len(data) || tloc.last < 0 || tloc.last >= len(data) || tloc.first > tloc.last {
+	if openTag.first < 0 || openTag.first >= len(data) || openTag.last < 0 || openTag.last >= len(data) || openTag.first > openTag.last {
 		return // avoid a panic
 	}
 
-	chunk = string(data[tloc.first:tloc.last])
+	chunk = string(data[openTag.first : closeTag.last+1])
 	if len(chunk) < 7 {
 		t.Error("expected the row we found to have some length to it")
 		return // avoid a panic
@@ -325,7 +325,7 @@ func TestShFindRow(t *testing.T) {
 
 	got = chunk[len(chunk)-6:]
 	stmt = "chunk[len(chunk)-6:]"
-	want = "<row>"
+	want = "</row>"
 
 	if got != want {
 		t.Error(tfail(tn, stmt, got, want))

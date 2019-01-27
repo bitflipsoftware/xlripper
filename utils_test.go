@@ -107,25 +107,3 @@ func TestUseFunction(t *testing.T) {
 	x := 1
 	use(x)
 }
-
-//func removeLeadingSlash(instr string) (outstr string) {
-//	if len(instr) == 0 {
-//		return instr
-//	} else if len(instr) == 1 && instr == "/" {
-//		return ""
-//	} else if len(instr) == 1 && instr != "/" {
-//		return instr
-//	}
-//
-//	var first rune
-//	for _, r := range instr {
-//		first = r
-//		break
-//	}
-//
-//	if first == '/' {
-//		return instr[1:]
-//	}
-//
-//	return instr
-//}

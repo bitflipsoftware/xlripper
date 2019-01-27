@@ -223,7 +223,6 @@ func lettersToNum(str string) int {
 			//cur := add + n
 			sum += add
 			exp--
-			use(n)
 		}
 	}
 

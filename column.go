@@ -1,4 +1,4 @@
-package xlsx
+package xlripper
 
 // Column represents a column of values in an xlsx spreadsheet. Cell values are represented as strings.
 // Type and formatting information from the spreadsheet is discarded, only a string representation of
@@ -9,11 +9,11 @@ package xlsx
 // The data structure is intended to be used as a read-only data structure.
 //
 type Column struct {
-    Cells []*string
+	Cells []*string
 }
 
 func NewColumn() Column {
-    c := Column{}
-    c.Cells = make([]*string, 0)
-    return c
+	c := Column{}
+	c.Cells = make([]*string, 0)
+	return c
 }

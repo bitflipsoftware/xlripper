@@ -1,4 +1,4 @@
-package xlsx
+package xlripper
 
 type sharedString struct {
 	s *string

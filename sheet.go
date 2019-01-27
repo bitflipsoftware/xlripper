@@ -14,9 +14,9 @@ func NewSheet() Sheet {
 	}
 }
 
-func (s *Sheet) add(rowIX, cellIX int, val *string) {
+func (s *Sheet) add(rowIX, colIX int, val *string) {
 
-	if cellIX < 0 {
+	if colIX < 0 {
 		return
 	}
 
@@ -24,15 +24,16 @@ func (s *Sheet) add(rowIX, cellIX int, val *string) {
 		return
 	}
 
-	for i := len(s.Columns); i < cellIX; i++ {
+	for i := len(s.Columns); i <= colIX; i++ {
 		s.Columns = append(s.Columns, NewColumn())
 	}
 
-	col := s.Columns[cellIX]
+	col := s.Columns[colIX]
 
-	for i := len(col.Cells); i < rowIX; i++ {
+	for i := len(col.Cells); i <= rowIX; i++ {
 		col.Cells = append(col.Cells, nil)
 	}
 
 	col.Cells[rowIX] = val
+	s.Columns[colIX] = col
 }

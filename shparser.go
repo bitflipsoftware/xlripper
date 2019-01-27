@@ -34,7 +34,7 @@ func shparse(zs zstruct, sheetIndex int) (Sheet, error) {
 
 	next := 0
 	ch := make(rowChan, 16)
-	rowIX := 0
+	loopIX := 0
 	wg := sync.WaitGroup{}
 	go receiveRowsAsync(ch, &sh)
 
@@ -57,7 +57,7 @@ rowLoop:
 		r.rowLoc = rowLoc
 		r.top.runes = data
 		r.top.shared = zs.info.sharedStrings
-		r.rowIX = rowIX
+		r.interationIX = loopIX
 
 		wg.Add(1)
 		go parseRowAsync(r, ch, &wg)

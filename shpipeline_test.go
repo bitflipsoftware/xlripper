@@ -7,17 +7,43 @@ import (
 
 func TestParseRowIndexCellIndex(t *testing.T) {
 	tn := "TestParseRowIndexCellIndex"
-	input := "A1"
-	expectedRowIX := 0
-	expectedColIX := 0
-	doRowIndexCellIndexTest(t, input, expectedRowIX, expectedColIX, tn)
+	type inp struct {
+		str   string
+		colIX int
+		rowIX int
+	}
+
+	inputs := []inp{
+		{"A1", 0, 0},
+		{"B2", 1, 1},
+		{"Z3", 25, 2},
+		{"AA4", 26, 3},
+		{"AB5", 27, 4},
+		{"AZ6", 51, 5},
+		{"BA7", 52, 6},
+		{"BB8", 53, 7},
+		{"XFD9", 16383, 8},
+		{"WLL10", 15871, 9},
+		{"VPF11", 15293, 10},
+		{"UEP12", 14341, 11},
+		{"ZX13", 699, 12},
+		{"ZZ14", 701, 13},
+		{"AAA15", 702, 14},
+		{"A?16", -1, -1},
+		{"Ü17", -1, -1},
+		{"UEP123456", 14341, 123455},
+	}
+
+	for _, input := range inputs {
+		doRowIndexCellIndexTest(t, input.str, input.rowIX, input.colIX, tn)
+	}
 }
 
 func doRowIndexCellIndexTest(t *testing.T, input string, expectedRowIX, expectedColIX int, testName string) {
 	actualRowIX, actualColIX := parseRowIndexCellIndex(input)
 
 	if expectedRowIX != actualRowIX {
-		statement := fmt.Sprintf("parseRowIndexCellIndex(\"%s\"), rowIX", input)
+		statement := fmt.Sprintf("parseRowIndexCellIndex(\"%s\"), interationIX", input)
 		t.Error(tfail(testName, statement, itos(actualRowIX), itos(expectedRowIX)))
 	}
 

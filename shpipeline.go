@@ -1,10 +1,12 @@
 package xlsx
 
 import (
+	"bytes"
 	"encoding/xml"
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/bitflip-software/xlsx/xmlprivate"
@@ -16,13 +18,14 @@ type topInfo struct {
 }
 
 type rowInfo struct {
-	top    topInfo
-	rowIX  int
-	rowLoc tagLoc
+	top          topInfo
+	interationIX int
+	rowLoc       tagLoc
 }
 
 type cellInfo struct {
-	cellIX  int
+	rowIX   int
+	colIX   int
 	cellLoc tagLoc
 	rowInfo rowInfo
 }
@@ -53,7 +56,7 @@ func parseRow(r rowInfo) rowParseResult {
 	rpr := rowParseResult{}
 	rpr.top.runes = r.top.runes
 	rpr.rowLoc = r.rowLoc
-	rpr.rowIX = r.rowIX
+	rpr.interationIX = r.interationIX
 	rpr.cells = make([]cellParseResult, 0)
 	go receiveCellsAsync(ch, &rpr)
 
@@ -74,7 +77,8 @@ cellLoop:
 		cellLoc := tagLoc{openLoc, closeLoc}
 		c := cellInfo{}
 		c.rowInfo = r
-		c.cellIX = -1
+		c.rowIX = -1
+		c.colIX = -1
 		c.cellLoc = cellLoc
 
 		wg.Add(1)
@@ -90,20 +94,16 @@ cellLoop:
 
 func receiveRowsAsync(ch rowChan, outSheet *Sheet) {
 	for r := range ch {
-		for ix, c := range r.cells {
-			outSheet.add(r.rowIX, ix, c.value)
+		for _, c := range r.cells {
+			outSheet.add(c.rowIX, c.colIX, c.value)
 		}
 	}
 }
 
 func receiveCellsAsync(ch cellChan, outRowResult *rowParseResult) {
 	for c := range ch {
-		if c.cellIX > 0 {
-			for i := len(outRowResult.cells); i < c.cellIX; i++ {
-				outRowResult.cells = append(outRowResult.cells, cellParseResult{})
-			}
-
-			outRowResult.cells[c.cellIX] = c
+		if c.rowIX > 0 && c.colIX > 0 {
+			outRowResult.cells = append(outRowResult.cells, c)
 		}
 	}
 }
@@ -112,6 +112,7 @@ func parseCellAsync(c cellInfo, ch cellChan, wg *sync.WaitGroup) {
 	ch <- parseCell(c)
 	wg.Done()
 }
+
 func parseCell(c cellInfo) cellParseResult {
 	str := string(c.rowInfo.top.runes[c.cellLoc.open.first : c.cellLoc.close.last+1])
 	fmt.Print(str)
@@ -128,7 +129,9 @@ func parseCell(c cellInfo) cellParseResult {
 	result.cellLoc = c.cellLoc
 	result.cellInfo = c
 
-	result.cellIX = 2 // TODO parse the cell index
+	rowIX, colIX := parseRowIndexCellIndex(xmlC.R)
+	result.rowIX = rowIX
+	result.colIX = colIX
 
 	if xmlC.T == "s" {
 		// should be a shared string
@@ -143,8 +146,29 @@ func parseCell(c cellInfo) cellParseResult {
 	return result
 }
 
-func parseRowIndexCellIndex(sheetCellReference string) (rowIX, cellIX int) {
-	return -1, -1
+func parseRowIndexCellIndex(sheetCellReference string) (rowIX, colIX int) {
+	letterBuf := bytes.Buffer{}
+	numberBuf := bytes.Buffer{}
+
+	for _, r := range strings.ToUpper(sheetCellReference) {
+		if r >= 'A' && r <= 'Z' {
+			letterBuf.WriteRune(r)
+		} else if r >= '0' && r <= '9' {
+			numberBuf.WriteRune(r)
+		} else {
+			return -1, -1
+		}
+	}
+
+	rowIX, err := strconv.Atoi(numberBuf.String())
+	rowIX--
+
+	if err != nil {
+		return -1, -1
+	}
+
+	colIX = lettersToNum(letterBuf.String())
+	return rowIX, colIX
 }
 
 func letterToNum(r rune) int {

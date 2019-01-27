@@ -15,16 +15,142 @@ func TestShParserBasics(t *testing.T) {
 		return
 	}
 
-	tbl, err := shparse(zs, 0)
+	sh, err := shparse(zs, 0)
 
 	if err != nil {
 		t.Errorf("received error from shparse: '%s'", err.Error())
 		return
 	}
 
-	use(zs)
-	use(tn)
-	use(tbl)
+	use(sh)
+
+	got := itos(len(sh.Columns))
+	want := "10"
+	stmt := "itos(len(sh.Columns))"
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+		return
+	}
+
+	colIX := 0
+	expectedCellCount := 4
+	col := sh.Columns[colIX]
+	colStmt := fmt.Sprintf("sh.Columns[%d]", colIX)
+	got = itos(len(col.Cells))
+	want = itos(expectedCellCount)
+	stmt = fmt.Sprintf("len(%s.Cells)", colStmt)
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+		return
+	}
+
+	colIX = 1
+	expectedCellCount = 4
+	col = sh.Columns[colIX]
+	colStmt = fmt.Sprintf("sh.Columns[%d]", colIX)
+	got = itos(len(col.Cells))
+	want = itos(expectedCellCount)
+	stmt = fmt.Sprintf("len(%s.Cells)", colStmt)
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+		return
+	}
+
+	colIX = 2
+	expectedCellCount = 4
+	col = sh.Columns[colIX]
+	colStmt = fmt.Sprintf("sh.Columns[%d]", colIX)
+	got = itos(len(col.Cells))
+	want = itos(expectedCellCount)
+	stmt = fmt.Sprintf("len(%s.Cells)", colStmt)
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+		return
+	}
+
+	colIX = 3
+	expectedCellCount = 4
+	col = sh.Columns[colIX]
+	colStmt = fmt.Sprintf("sh.Columns[%d]", colIX)
+	got = itos(len(col.Cells))
+	want = itos(expectedCellCount)
+	stmt = fmt.Sprintf("len(%s.Cells)", colStmt)
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+		return
+	}
+
+	colIX = 4
+	expectedCellCount = 4
+	col = sh.Columns[colIX]
+	colStmt = fmt.Sprintf("sh.Columns[%d]", colIX)
+	got = itos(len(col.Cells))
+	want = itos(expectedCellCount)
+	stmt = fmt.Sprintf("len(%s.Cells)", colStmt)
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+		return
+	}
+
+	colIX = 5
+	expectedCellCount = 4
+	col = sh.Columns[colIX]
+	colStmt = fmt.Sprintf("sh.Columns[%d]", colIX)
+	got = itos(len(col.Cells))
+	want = itos(expectedCellCount)
+	stmt = fmt.Sprintf("len(%s.Cells)", colStmt)
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+		return
+	}
+
+	colIX = 6
+	expectedCellCount = 4
+	col = sh.Columns[colIX]
+	colStmt = fmt.Sprintf("sh.Columns[%d]", colIX)
+	got = itos(len(col.Cells))
+	want = itos(expectedCellCount)
+	stmt = fmt.Sprintf("len(%s.Cells)", colStmt)
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+		return
+	}
+
+	colIX = 7
+	expectedCellCount = 4
+	col = sh.Columns[colIX]
+	colStmt = fmt.Sprintf("sh.Columns[%d]", colIX)
+	got = itos(len(col.Cells))
+	want = itos(expectedCellCount)
+	stmt = fmt.Sprintf("len(%s.Cells)", colStmt)
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+		return
+	}
+
+	colIX = 8
+	expectedCellCount = 0
+	col = sh.Columns[colIX]
+	colStmt = fmt.Sprintf("sh.Columns[%d]", colIX)
+	got = itos(len(col.Cells))
+	want = itos(expectedCellCount)
+	stmt = fmt.Sprintf("len(%s.Cells)", colStmt)
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+		return
+	}
+
+	colIX = 9
+	expectedCellCount = 6
+	col = sh.Columns[colIX]
+	colStmt = fmt.Sprintf("sh.Columns[%d]", colIX)
+	got = itos(len(col.Cells))
+	want = itos(expectedCellCount)
+	stmt = fmt.Sprintf("len(%s.Cells)", colStmt)
+	if got != want {
+		t.Error(tfail(tn, stmt, got, want))
+		return
+	}
 }
 
 func TestShFindRow(t *testing.T) {
@@ -65,7 +191,7 @@ func TestShFindRow(t *testing.T) {
 	}
 
 	got = itos(tloc.last)
-	want = itos(1273)
+	want = itos(1044)
 
 	if got != want {
 		t.Error(tfail(tn, stmt+"; last", got, want))
@@ -83,7 +209,7 @@ func TestShFindRow(t *testing.T) {
 
 	got = chunk[0:5]
 	stmt = "chunk[0:5]"
-	want = "<row>"
+	want = "<row "
 
 	if got != want {
 		t.Error(tfail(tn, stmt, got, want))

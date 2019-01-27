@@ -3,6 +3,7 @@ package xlsx
 import (
 	"encoding/xml"
 	"fmt"
+	"math"
 	"strconv"
 	"sync"
 
@@ -151,12 +152,16 @@ func letterToNum(r rune) int {
 		return -1
 	}
 
-	i := int('A' - r)
+	i := int(r - 'A')
+
+	if i < 0 || i > 25 {
+		return -1
+	}
+
 	return i
 }
 
 func lettersToNum(str string) int {
-
 	if len(str) == 1 {
 		rs := []rune(str)
 		if len(rs) == 1 {
@@ -167,10 +172,29 @@ func lettersToNum(str string) int {
 	}
 
 	nums := make([]int, 0, 2)
-	for rn := range []rune(str) {
-		num := letterToNum(rune(rn))
+	for _, rn := range str {
+		n := letterToNum(rn)
+		if n < 0 || n > 25 {
+			return -1
+		}
+		num := n
 		nums = append(nums, num)
 	}
 
-	return -1
+	exp := len(nums) - 1
+	sum := 0
+
+	for _, n := range nums {
+		if exp == 0 {
+			sum += n
+		} else {
+			add := int(math.Pow(float64(26), float64(exp))) * (n + 1)
+			//cur := add + n
+			sum += add
+			exp--
+			use(n)
+		}
+	}
+
+	return sum
 }

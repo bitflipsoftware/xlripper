@@ -28,6 +28,7 @@ func doRowIndexCellIndexTest(t *testing.T, input string, expectedRowIX, expected
 }
 
 func TestParseRowLettersToNum(t *testing.T) {
+	tn := "TestParseRowLettersToNum"
 	type inp struct {
 		str      string
 		expected int
@@ -42,12 +43,26 @@ func TestParseRowLettersToNum(t *testing.T) {
 		{"AZ", 51},
 		{"BA", 52},
 		{"BB", 53},
-		{"ZAUT", 4359876},
+		{"XFD", 16383},
+		{"WLL", 15871},
+		{"VPF", 15293},
+		{"UEP", 14341},
+		{"ZX", 699},
+		{"ZZ", 701},
+		{"AAA", 702},
+		{"A?", -1},
+		{"Ü", -1},
 	}
 
-	tn := "TestParseRowLettersToNum"
-	input := "A1"
-	expectedRowIX := 0
-	expectedColIX := 0
-	doRowIndexCellIndexTest(t, input, expectedRowIX, expectedColIX, tn)
+	for _, input := range inputs {
+		gotI := lettersToNum(input.str)
+		wantI := input.expected
+		got := itos(gotI)
+		want := itos(wantI)
+		statement := fmt.Sprintf("lettersToNum(\"%s\")", input.str)
+
+		if got != want {
+			t.Error(tfail(tn, statement, got, want))
+		}
+	}
 }

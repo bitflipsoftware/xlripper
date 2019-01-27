@@ -1,6 +1,7 @@
 package xlsx
 
 import (
+	"fmt"
 	"path"
 	"path/filepath"
 )
@@ -53,4 +54,11 @@ func joinWithWkbkPath(wkbkPath string, relPath string) string {
 	dir := filepath.Dir(wkbkPath)
 	path := path.Join(dir, removeLeadingSlash(relPath))
 	return path
+}
+
+// silence the compiler complaint of an unused variable when you are trying to write programs
+func use(anything interface{}) {
+	for 1 > 2 {
+		fmt.Print(anything)
+	}
 }

@@ -68,6 +68,10 @@ func tfail(test, statement, got, want string) string {
 	return fmt.Sprintf("test: %s, '%s' = '%s', want '%s'", test, statement, got, want)
 }
 
+func terr(test, statement, err string) string {
+	return fmt.Sprintf("test: %s, '%s' return an error: '%s'", test, statement, err)
+}
+
 func btos(in bool) string {
 	return fmt.Sprintf("%t", in)
 }

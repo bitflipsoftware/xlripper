@@ -52,30 +52,30 @@ func TestShFindRow(t *testing.T) {
 	}
 
 	next := 0
-	tloc := badTagLoc
+	tloc := badPair
 	chunk := ""
 
-	tloc = shfindRow(data, next, len(data))
-	stmt = fmt.Sprintf("first, last = shfindRow(data, %d)", next)
-	got = itos(tloc.open.first)
+	tloc = shFindFirstOccurenceOfElement(data, next, len(data), "row")
+	stmt = fmt.Sprintf("first, last = shFindFirstOccurenceOfElement(data, %d)", next)
+	got = itos(tloc.first)
 	want = itos(999)
 
 	if got != want {
 		t.Error(tfail(tn, stmt+"; first", got, want))
 	}
 
-	got = itos(tloc.open.last)
+	got = itos(tloc.last)
 	want = itos(1273)
 
 	if got != want {
 		t.Error(tfail(tn, stmt+"; last", got, want))
 	}
 
-	if tloc.open.first < 0 || tloc.open.first >= len(data) || tloc.open.last < 0 || tloc.open.last >= len(data) || tloc.open.first > tloc.open.last {
+	if tloc.first < 0 || tloc.first >= len(data) || tloc.last < 0 || tloc.last >= len(data) || tloc.first > tloc.last {
 		return // avoid a panic
 	}
 
-	chunk = string(data[tloc.open.first:tloc.open.last])
+	chunk = string(data[tloc.first:tloc.last])
 	if len(chunk) < 7 {
 		t.Error("expected the row we found to have some length to it")
 		return // avoid a panic

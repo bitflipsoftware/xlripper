@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sync"
 	"unicode"
 )
 
@@ -32,20 +33,39 @@ func shparse(zs zstruct, sheetIndex int) (Sheet, error) {
 	}
 
 	next := 0
-	first, last := 0, 0
-	for first != -1 && last != -1 {
-		tloc := shfindRow(data, next, len(data))
-		if first != -1 && last != -1 {
-			rowRunes := data[first : last+1]
-			// TODO - send rune slice down a pipeline
-			// TODO - remove this debugging
-			str := string(rowRunes)
-			fmt.Print(str)
-			use(tloc)
+	ch := make(rowChan, 16)
+	rowIX := 0
+	wg := sync.WaitGroup{}
+	go receiveRowsAsync(ch, &sh)
+
+rowLoop:
+	for {
+		openLoc := shFindFirstOccurenceOfElement(data, next, len(data), "row")
+
+		if openLoc == badPair {
+			break rowLoop
 		}
-		next = last + 1
+
+		closeLoc := shTagCloseFind(data, openLoc.last+1, len(data), "row")
+
+		if closeLoc == badPair {
+			break rowLoop
+		}
+
+		rowLoc := tagLoc{openLoc, closeLoc}
+		r := rowInfo{}
+		r.rowLoc = rowLoc
+		r.top.runes = data
+		r.top.shared = zs.info.sharedStrings
+		r.rowIX = rowIX
+
+		wg.Add(1)
+		go parseRowAsync(r, ch, &wg)
+		next = rowLoc.close.last + 1
 	}
 
+	wg.Wait()
+	close(ch)
 	return sh, nil
 }
 
@@ -87,16 +107,55 @@ func shadvance(runes []rune, start int, r rune) int {
 	return -1
 }
 
-// shfind row starts at 'first' looks ahead to find the first and last indices of a <row> tag. it return the first and
-// last indices of the row tag. that is, if you take data[first:last+1] you will get exactly the complete row tag.
-// a return of -1, -1 indicates that there was no row found
-func shfindRow(runes []rune, first, last int) tagLoc {
+// shFindFirstOccurenceOfElement does stuff
+func shFindFirstOccurenceOfElement(runes []rune, first, last int, elem string) indexPair {
 	ix := shSetFirst(runes, first)
 	e := shSetLast(runes, last)
-	s := shdebug(runes, 0, 10000)
+	s := shdebug(runes, ix, 10)
 	use(s)
-	x := shTagFind(runes, ix, e, "row")
-	return x
+
+	lsdkjf := string(runes[ix : ix+4])
+	if string(runes[ix:ix+4]) == "<row" {
+		use(lsdkjf)
+	}
+
+	for ; ix <= e && runes[ix] != lChevron; ix++ {
+		// advance to an lCheveron
+	}
+
+	lChevPos := ix
+
+	if ix > e || runes[ix] != lChevron {
+		return badPair
+	}
+
+	open := badPair
+
+	if runes[ix] != '/' {
+		open, ix = shTagOpenFind(runes, lChevPos, e, elem)
+
+		if open != badPair {
+			return open
+		}
+	}
+
+	for ; ix <= e && runes[ix] != rChevron; ix++ {
+		// advance to an rCheveron
+	}
+
+	if ix > e {
+		return badPair
+	} else if runes[ix] != rChevron {
+		return badPair
+	}
+
+	ix++
+
+	if ix > e {
+		return badPair
+	}
+
+	return shFindFirstOccurenceOfElement(runes, ix, e, elem)
 }
 
 // shdebug is used in debugging to view a chunk of data as a string instead of a rune slice (i.e. so you can log it or
@@ -128,18 +187,22 @@ func shbad(runes []rune, ix int) bool {
 func shFindNamespaceColon(runes []rune, first, last int) int {
 	e := shSetLast(runes, last)
 	ix := shSetFirst(runes, first)
-	var r rune
 	namespaceColonPos := -1
 
 findNamespaceColon:
-	for localIX := ix; localIX <= e; localIX++ {
-		r = runes[localIX]
-		if r == '<' {
+	for ; ix <= e; ix++ {
+		if runes[ix] == lChevron {
 			return -1
-		} else if r == ':' {
-			namespaceColonPos = localIX
-			break findNamespaceColon
-		} else if r == '>' {
+		} else if runes[ix] == rChevron {
+			return -1
+		} else if runes[ix] == ' ' {
+			return -1
+		} else if runes[ix] == '"' {
+			return -1
+		} else if runes[ix] == '=' {
+			return -1
+		} else if runes[ix] == ':' {
+			namespaceColonPos = ix
 			break findNamespaceColon
 		}
 	}
@@ -336,7 +399,10 @@ func shTagFind(runes []rune, first, last int, elem string) tagLoc {
 	for ; ix <= e && open == badPair; ix++ {
 		s := shdebug(runes, ix, 20)
 		use(s)
+		c := shdebug(runes, ix, 1)
+		use(c)
 		open, ix = shTagOpenFind(runes, ix, e, elem)
+		ix--
 	}
 
 	if open == badPair {

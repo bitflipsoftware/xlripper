@@ -35,8 +35,10 @@ func shparse(zs zstruct, sheetIndex int) (Sheet, error) {
 	next := 0
 	ch := make(rowChan, rowRoutines)
 	loopIX := 0
-	wg := sync.WaitGroup{}
-	go receiveRowsAsync(ch, &sh)
+	sendWait := sync.WaitGroup{}
+	receiveWait := sync.WaitGroup{}
+	receiveWait.Add(1)
+	go receiveRowsAsync(ch, &sh, &receiveWait)
 
 rowLoop:
 	for {
@@ -59,13 +61,14 @@ rowLoop:
 		r.top.shared = zs.info.sharedStrings
 		r.interationIX = loopIX
 
-		wg.Add(1)
-		go parseRowAsync(r, ch, &wg)
+		sendWait.Add(1)
+		go parseRowAsync(r, ch, &sendWait)
 		next = rowLoc.close.last + 1
 	}
 
-	wg.Wait()
+	sendWait.Wait()
 	close(ch)
+	receiveWait.Wait()
 	return sh, nil
 }
 
@@ -111,13 +114,6 @@ func shadvance(runes []rune, start int, r rune) int {
 func shFindFirstOccurenceOfElement(runes []rune, first, last int, elem string) indexPair {
 	ix := shSetFirst(runes, first)
 	e := shSetLast(runes, last)
-	s := shdebug(runes, ix, 10)
-	use(s)
-
-	lsdkjf := string(runes[ix : ix+4])
-	if string(runes[ix:ix+4]) == "<row" {
-		use(lsdkjf)
-	}
 
 	for ; ix <= e && runes[ix] != lChevron; ix++ {
 		// advance to an lCheveron
@@ -217,16 +213,12 @@ func shTagCompletion(runes []rune, first, last int, elem string) int {
 	e := shSetLast(runes, last)
 	ix := shSetFirst(runes, first)
 	var r rune
-	peek := shdebug(runes, ix, 3)
-	use(peek)
 	namespaceColonPos := shFindNamespaceColon(runes, ix, e)
 	if namespaceColonPos > 0 {
 		ix = namespaceColonPos + 1
 	}
 
 	r = runes[ix]
-	shdebugchar(r)
-	shdebugrange(runes, ix)
 
 	// we should be pointing at the first rune of the element name now
 	if ix > e || r == '<' || r == ':' || r == ' ' || r == '>' {
@@ -285,8 +277,6 @@ findOpenTag:
 		return badPair, ix
 	}
 
-	peek := shdebug(runes, ix, 3)
-	use(peek)
 	foundLast := shTagCompletion(runes, ix, e, elem)
 
 	if foundLast <= ix {
@@ -343,8 +333,6 @@ findLeftChevron:
 			return badPair
 		}
 
-		peek := shdebug(runes, ix, 3)
-		use(peek)
 		// now we are inside of a nested element
 		nestedCloseLoc := shTagCloseFind(runes, ix, e, localElemName)
 
@@ -397,10 +385,6 @@ func shTagFind(runes []rune, first, last int, elem string) tagLoc {
 	open := badPair
 
 	for ; ix <= e && open == badPair; ix++ {
-		s := shdebug(runes, ix, 20)
-		use(s)
-		c := shdebug(runes, ix, 1)
-		use(c)
 		open, ix = shTagOpenFind(runes, ix, e, elem)
 		ix--
 	}
@@ -436,18 +420,6 @@ func shSetFirst(runes []rune, first int) int {
 		return len(runes) - 1
 	}
 	return first
-}
-
-func shdebugchar(r rune) {
-	s := string(r)
-	fmt.Print(s)
-}
-
-func shdebugrange(runes []rune, currentIX int) {
-	first := shSetFirst(runes, currentIX-5)
-	last := shSetLast(runes, currentIX+5)
-	s := string(runes[first : last+1])
-	fmt.Print(s)
 }
 
 // shTagNameFind returns the name of an element and the position of the close '>' for that element. 'first' should be

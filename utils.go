@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
-	"time"
 )
 
 func mini(a, b int) int {
@@ -59,7 +58,7 @@ func joinWithWkbkPath(wkbkPath string, relPath string) string {
 
 // silence the compiler complaint of an unused variable when you are trying to write programs
 func use(anything interface{}) {
-	if time.Now().Unix() < 0 {
+	for 1 > 2 {
 		fmt.Print(anything)
 	}
 }

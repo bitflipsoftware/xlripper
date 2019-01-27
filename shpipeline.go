@@ -56,13 +56,15 @@ func parseRow(r rowInfo) rowParseResult {
 	ix := shSetLast(r.top.runes, r.rowLoc.open.last+1)
 	e := shSetLast(r.top.runes, r.rowLoc.close.first-1)
 	ch := make(cellChan, cellRoutines)
-	wg := sync.WaitGroup{}
+	sendWait := sync.WaitGroup{}
+	receiveWait := sync.WaitGroup{}
 	rpr := rowParseResult{}
 	rpr.top.runes = r.top.runes
 	rpr.rowLoc = r.rowLoc
 	rpr.interationIX = r.interationIX
 	rpr.cells = make([]cellParseResult, 0)
-	go receiveCellsAsync(ch, &rpr)
+	receiveWait.Add(1)
+	go receiveCellsAsync(ch, &rpr, &receiveWait)
 
 cellLoop:
 	for {
@@ -85,31 +87,33 @@ cellLoop:
 		c.colIX = -1
 		c.cellLoc = cellLoc
 
-		wg.Add(1)
-		go parseCellAsync(c, ch, &wg)
+		sendWait.Add(1)
+		go parseCellAsync(c, ch, &sendWait)
 		ix = cellLoc.close.last + 1
 	}
 
-	wg.Wait()
+	sendWait.Wait()
 	close(ch)
-
+	receiveWait.Wait()
 	return rpr
 }
 
-func receiveRowsAsync(ch rowChan, outSheet *Sheet) {
+func receiveRowsAsync(ch rowChan, outSheet *Sheet, wg *sync.WaitGroup) {
 	for r := range ch {
 		for _, c := range r.cells {
 			outSheet.add(c.rowIX, c.colIX, c.value)
 		}
 	}
+	wg.Done()
 }
 
-func receiveCellsAsync(ch cellChan, outRowResult *rowParseResult) {
+func receiveCellsAsync(ch cellChan, outRowResult *rowParseResult, wg *sync.WaitGroup) {
 	for c := range ch {
-		if c.rowIX > 0 && c.colIX > 0 {
+		if c.rowIX >= 0 && c.colIX >= 0 {
 			outRowResult.cells = append(outRowResult.cells, c)
 		}
 	}
+	wg.Done()
 }
 
 func parseCellAsync(c cellInfo, ch cellChan, wg *sync.WaitGroup) {

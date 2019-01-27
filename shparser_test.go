@@ -2,6 +2,8 @@ package xlsx
 
 import (
 	"fmt"
+	"math"
+	"strconv"
 	"testing"
 )
 
@@ -150,6 +152,114 @@ func TestShParserBasics(t *testing.T) {
 	if got != want {
 		t.Error(tfail(tn, stmt, got, want))
 		return
+	}
+
+	rowIX := 5
+	colIX = 9
+	expectedCellValue := "z"
+	col = sh.Columns[colIX]
+	colStmt = fmt.Sprintf("sh.Columns[%d]", colIX)
+	cell := col.Cells[rowIX]
+	cellStmt := fmt.Sprintf("Cells[%d]", rowIX)
+	stmt = fmt.Sprintf("*(%s.%s)", colStmt, cellStmt)
+	if cell == nil {
+		t.Errorf("%s would result in a nil dereference, the value '%s' was expected instead", stmt, expectedCellValue)
+	} else {
+		got = *cell
+		want = expectedCellValue
+		if got != want {
+			t.Error(tfail(tn, stmt, got, want))
+		}
+	}
+
+	rowIX = 0
+	colIX = 0
+	expectedCellValue = "sfd"
+	col = sh.Columns[colIX]
+	colStmt = fmt.Sprintf("sh.Columns[%d]", colIX)
+	cell = col.Cells[rowIX]
+	cellStmt = fmt.Sprintf("Cells[%d]", rowIX)
+	stmt = fmt.Sprintf("*(%s.%s)", colStmt, cellStmt)
+	if cell == nil {
+		t.Errorf("%s would result in a nil dereference, the value '%s' was expected instead", stmt, expectedCellValue)
+	} else {
+		got = *cell
+		want = expectedCellValue
+		if got != want {
+			t.Error(tfail(tn, stmt, got, want))
+		}
+	}
+
+	rowIX = 1
+	colIX = 2
+	expectedCellFloat := 57.37072
+	col = sh.Columns[colIX]
+	colStmt = fmt.Sprintf("sh.Columns[%d]", colIX)
+	cell = col.Cells[rowIX]
+	cellStmt = fmt.Sprintf("Cells[%d]", rowIX)
+	stmt = fmt.Sprintf("*(%s.%s)", colStmt, cellStmt)
+	if cell == nil {
+		t.Errorf("%s would result in a nil dereference, the value '%s' was expected instead", stmt, expectedCellValue)
+	} else {
+		got = *cell
+		gotF, err := strconv.ParseFloat(got, 64)
+		use(gotF)
+
+		if err != nil {
+			t.Errorf("error trying to parse %s as a float: %s", got, err.Error())
+		}
+
+		want = fmt.Sprintf("%.14f", expectedCellFloat)
+		if got != want {
+			if math.Abs(gotF-expectedCellFloat) > epsilon {
+				t.Error(tfail(tn, stmt, got, want))
+			}
+		}
+	}
+
+	rowIX = 2
+	colIX = 3
+	expectedCellValue = "sad;fghjk"
+	col = sh.Columns[colIX]
+	colStmt = fmt.Sprintf("sh.Columns[%d]", colIX)
+	cell = col.Cells[rowIX]
+	cellStmt = fmt.Sprintf("Cells[%d]", rowIX)
+	stmt = fmt.Sprintf("*(%s.%s)", colStmt, cellStmt)
+	if cell == nil {
+		t.Errorf("%s would result in a nil dereference, the value '%s' was expected instead", stmt, expectedCellValue)
+	} else {
+		got = *cell
+		want = expectedCellValue
+		if got != want {
+			t.Error(tfail(tn, stmt, got, want))
+		}
+	}
+
+	rowIX = 3
+	colIX = 7
+	expectedCellFloat = 8.73734
+	col = sh.Columns[colIX]
+	colStmt = fmt.Sprintf("sh.Columns[%d]", colIX)
+	cell = col.Cells[rowIX]
+	cellStmt = fmt.Sprintf("Cells[%d]", rowIX)
+	stmt = fmt.Sprintf("*(%s.%s)", colStmt, cellStmt)
+	if cell == nil {
+		t.Errorf("%s would result in a nil dereference, the value '%s' was expected instead", stmt, expectedCellValue)
+	} else {
+		got = *cell
+		gotF, err := strconv.ParseFloat(got, 64)
+		use(gotF)
+
+		if err != nil {
+			t.Errorf("error trying to parse %s as a float: %s", got, err.Error())
+		}
+
+		want = fmt.Sprintf("%.14f", expectedCellFloat)
+		if got != want {
+			if math.Abs(gotF-expectedCellFloat) > epsilon {
+				t.Error(tfail(tn, stmt, got, want))
+			}
+		}
 	}
 }
 

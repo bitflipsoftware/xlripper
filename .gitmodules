@@ -1,0 +1,3 @@
+[submodule "integ-test-files"]
+	path = integ-test-files
+	url = https://github.com/bitflip-software/xlripper-test.git

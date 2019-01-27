@@ -24,6 +24,16 @@ func TestShParserBasics(t *testing.T) {
 		return
 	}
 
+	sheetName := "^^^^ gs"
+	if sh.Name != sheetName {
+		t.Errorf(tfail(tn, "sh.Name", sh.Name, sheetName))
+	}
+
+	sheetIX := 0
+	if sh.Name != sheetName {
+		t.Errorf(tfail(tn, "sh.Index", itos(sh.Index), itos(sheetIX)))
+	}
+
 	got := itos(len(sh.Columns))
 	want := "10"
 	stmt := "itos(len(sh.Columns))"

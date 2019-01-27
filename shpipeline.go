@@ -5,12 +5,16 @@ import (
 	"encoding/xml"
 	"fmt"
 	"math"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/bitflip-software/xlsx/xmlprivate"
 )
+
+var rowRoutines = runtime.NumCPU()
+var cellRoutines = runtime.NumCPU()
 
 type topInfo struct {
 	runes  []rune
@@ -51,7 +55,7 @@ func parseRowAsync(r rowInfo, ch rowChan, wg *sync.WaitGroup) {
 func parseRow(r rowInfo) rowParseResult {
 	ix := shSetLast(r.top.runes, r.rowLoc.open.last+1)
 	e := shSetLast(r.top.runes, r.rowLoc.close.first-1)
-	ch := make(cellChan, 16)
+	ch := make(cellChan, cellRoutines)
 	wg := sync.WaitGroup{}
 	rpr := rowParseResult{}
 	rpr.top.runes = r.top.runes

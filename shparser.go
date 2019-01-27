@@ -33,7 +33,7 @@ func shparse(zs zstruct, sheetIndex int) (Sheet, error) {
 	}
 
 	next := 0
-	ch := make(rowChan, 16)
+	ch := make(rowChan, rowRoutines)
 	loopIX := 0
 	wg := sync.WaitGroup{}
 	go receiveRowsAsync(ch, &sh)

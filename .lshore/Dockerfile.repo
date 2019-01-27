@@ -18,6 +18,10 @@ RUN git checkout $BASE
 RUN git checkout $HEAD
 RUN git merge $BASE
 RUN git checkout $HEAD
+RUN git submodule init
+RUN git submodule update --recursive --remote
+RUN ls
+RUN cd "${WRK}/integ" && git pull --all
 
 # copy from container dir ($WRK) to binded host dir (/repo:/repo)
 CMD echo "copying from $WRK to $BIND_MNT..." && cp -r "$WRK/." "$BIND_MNT"

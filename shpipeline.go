@@ -123,12 +123,11 @@ func parseCellAsync(c cellInfo, ch cellChan, wg *sync.WaitGroup) {
 
 func parseCell(c cellInfo) cellParseResult {
 	str := string(c.rowInfo.top.runes[c.cellLoc.open.first : c.cellLoc.close.last+1])
-	fmt.Print(str)
 	xmlC := xmlprivate.C{}
 	err := xml.Unmarshal([]byte(str), &xmlC)
 
 	if err != nil {
-		//?
+		// TODO - introduce pipeline cancellation on err
 		fmt.Print(err.Error())
 	}
 

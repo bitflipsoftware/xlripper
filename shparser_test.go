@@ -24,8 +24,6 @@ func TestShParserBasics(t *testing.T) {
 		return
 	}
 
-	use(sh)
-
 	got := itos(len(sh.Columns))
 	want := "10"
 	stmt := "itos(len(sh.Columns))"

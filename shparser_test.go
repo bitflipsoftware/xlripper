@@ -269,6 +269,14 @@ func TestShParserBasics(t *testing.T) {
 	}
 }
 
+func TestShParserErr(t *testing.T) {
+	_, err := shload(sheetMeta{})
+
+	if err == nil {
+		t.Errorf("an error was expected but was not received")
+	}
+}
+
 func TestShFindRow(t *testing.T) {
 	tn := "TestShFindRow"
 	rawData := topen(Mac1621)

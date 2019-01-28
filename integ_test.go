@@ -3,6 +3,7 @@ package xlripper
 import (
 	"bufio"
 	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -209,7 +210,7 @@ func runIntegTest(t *testing.T, test IntegTest, dir string) {
 	for sheetIX := 0; sheetIX < wantNumSheets; sheetIX++ {
 		sheetName := parser.SheetNames()[sheetIX]
 		localTestName := fmt.Sprintf("%s %s", tn, sheetName)
-		testSheetDataParsing(t, localTestName, sheetIX, parser, test)
+		testSheetDataParsing(t, localTestName, sheetIX, parser, test, dir)
 	}
 }
 
@@ -221,6 +222,116 @@ func testSheetName(t *testing.T, testName string, sheetIndex int, parser Parser,
 	}
 }
 
-func testSheetDataParsing(t *testing.T, testName string, sheetIndex int, parser Parser, test IntegTest) {
+func testSheetDataParsing(t *testing.T, testName string, sheetIndex int, parser Parser, test IntegTest, dir string) {
+	sheetName := parser.SheetNames()[sheetIndex]
+	csvFilename := test.FileSheets[sheetIndex].Name()
+	csvPath := path.Join(dir, csvFilename)
+	ofile, err := os.Open(csvPath)
 
+	if err != nil {
+		t.Errorf("error occurred opening %s: %s", csvFilename, err.Error())
+	}
+
+	defer ofile.Close()
+	csvReader := csv.NewReader(ofile)
+
+	// Read reads one record (a slice of fields) from r. If the record has an unexpected number of fields, Read returns
+	// the record along with the error ErrFieldCount. Except for that case, Read always returns either a non-nil record
+	// or a non-nil error, but not both. If there is no data left to be read, Read returns nil, io.EOF. If ReuseRecord
+	// is true, the returned slice may be shared between multiple calls to Read.
+
+	csvRows := make([][]string, 0)
+
+csvLoop:
+	for {
+		row, err := csvReader.Read()
+
+		if err == io.EOF {
+			break csvLoop
+		} else if err != nil {
+			t.Errorf("failure parsing %s: %s", csvFilename, err.Error())
+			break csvLoop
+		}
+
+		csvRows = append(csvRows, row)
+	}
+
+	sheet, err := parser.ParseOne(sheetIndex)
+
+	if err != nil {
+		// TODO - tfail
+	}
+
+	numRows, numCols := findMaxRowAndColumnLengths(sheet, csvRows)
+
+	use(sheetName)
+	use(numRows)
+	use(numCols)
+}
+
+func findMaxRowAndColumnLengths(sheet Sheet, csvRows [][]string) (numRows, numCols int) {
+	xNumCols := len(sheet.Columns)
+	xNumRows := -1
+
+	for _, c := range sheet.Columns {
+		if len(c.Cells) < xNumRows {
+			xNumCols = len(c.Cells)
+		}
+	}
+
+	cNumRows := len(csvRows)
+	cNumCols := -1
+
+	for _, r := range csvRows {
+		if len(r) > cNumCols {
+			cNumCols = cNumRows
+		}
+	}
+
+	maxCols := maxi(xNumCols, cNumCols)
+	maxRows := maxi(xNumRows, cNumRows)
+	return maxRows, maxCols
+
+}
+
+func getCsvValue(csvRows [][]string, rowIX, colIX int) string {
+	if rowIX < 0 || colIX < 0 {
+		return ""
+	}
+
+	if rowIX >= len(csvRows) {
+		return ""
+	}
+
+	row := csvRows[rowIX]
+
+	if colIX >= len(row) {
+		return ""
+	}
+
+	return row[colIX]
+}
+
+func getXLSXValue(sheet Sheet, rowIX, colIX int) (value string, ok bool) {
+	if colIX < 0 || rowIX < 0 {
+		return "", false
+	}
+
+	if colIX >= len(sheet.Columns) {
+		return "", false
+	}
+
+	col := sheet.Columns[colIX]
+
+	if rowIX >= len(col.Cells) {
+		return "", false
+	}
+
+	cell := col.Cells[colIX]
+
+	if cell == nil {
+		return "", true
+	}
+
+	return *cell, true
 }

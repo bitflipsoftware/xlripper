@@ -124,6 +124,10 @@ metaParseLoop:
 	}
 
 	tests = gatherTests(t, tests, files, integDir)
+
+	for _, itest := range tests {
+		runIntegTest(t, itest, integDir)
+	}
 }
 
 func gatherTests(t *testing.T, tests []IntegTest, files []os.FileInfo, dir string) []IntegTest {
@@ -158,12 +162,18 @@ func gatherTests(t *testing.T, tests []IntegTest, files []os.FileInfo, dir strin
 
 		for sheetIX, _ := range itest.Manifest.Sheets {
 			sheetCsvName := fmt.Sprintf("%s.sheet%d.csv", itest.Root, sheetIX)
+			isFound := false
 		sheetFileSearchLoop:
 			for _, f := range files {
-				if strings.ToLower(f.Name()) == sheetCsvName {
+				searchName := strings.ToLower(f.Name())
+				if searchName == sheetCsvName {
 					itest.FileSheets = append(itest.FileSheets, f)
+					isFound = true
 					break sheetFileSearchLoop
 				}
+			}
+
+			if !isFound {
 				t.Errorf("%s was not found", sheetCsvName)
 			}
 		}
@@ -171,18 +181,36 @@ func gatherTests(t *testing.T, tests []IntegTest, files []os.FileInfo, dir strin
 		tests[itestIX] = itest
 	}
 
-	parser, err := NewParser(path.Join(dir, "bi.xlsx"))
-
-	if err != nil {
-		panic(err)
-	}
-
-	sheets, err := parser.Parse()
-
-	if err != nil {
-		panic(err)
-	}
-
-	use(sheets)
 	return tests
+}
+
+func runIntegTest(t *testing.T, test IntegTest, dir string) {
+	tn := fmt.Sprintf("Integ Test %s", test.FileXLSX.Name())
+	xlsxPath := path.Join(dir, test.FileXLSX.Name())
+	parser, err := NewParser(xlsxPath)
+
+	if err != nil {
+		t.Errorf("error opening parser for %s: %s", test.FileXLSX.Name(), err.Error())
+		return
+	}
+
+	wantNumSheets := len(test.Manifest.Sheets)
+	gotNumSheets := parser.NumSheets()
+
+	if wantNumSheets != gotNumSheets {
+		t.Error(tfail(tn, "parser.NumSheets()", itos(gotNumSheets), itos(wantNumSheets)))
+		return
+	}
+
+	for sheetIX := 0; sheetIX < wantNumSheets; sheetIX++ {
+		testSheetName(t, tn, sheetIX, parser, test)
+	}
+}
+
+func testSheetName(t *testing.T, testName string, sheetIndex int, parser Parser, test IntegTest) {
+	want := test.Manifest.Sheets[sheetIndex]
+	got := parser.SheetNames()[sheetIndex]
+	if want != got {
+		t.Errorf(testName, fmt.Sprintf("parser.SheetNames()[%d]", sheetIndex), got, want)
+	}
 }

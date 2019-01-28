@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"html"
 	"io"
+	"path"
 	"regexp"
 	"strings"
 
@@ -310,7 +311,14 @@ func zparseSharedStrings(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 		return zi, nil
 	}
 
-	zi.sharedStringsName = joinWithWkbkPath(zi.wkbkName, zi.wkbkRels.Rels[index].Target)
+	foundName := zi.wkbkRels.Rels[index].Target
+
+	if path.IsAbs(foundName) {
+		zi.sharedStringsName = removeLeadingSlash(foundName)
+	} else {
+		zi.sharedStringsName = joinWithWkbkPath(zi.wkbkName, zi.wkbkRels.Rels[index].Target)
+	}
+
 	zi.sharedStringsIndex = zfind(zr, zi.sharedStringsName)
 
 	if zi.sharedStringsIndex < 0 {
@@ -437,7 +445,13 @@ func zparseSheetMetadata(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 
 		relName := rel.Target
 		sh := sheetMeta{}
-		sh.sheetName = joinWithWkbkPath(zi.wkbkName, relName)
+
+		if path.IsAbs(relName) {
+			sh.sheetName = removeLeadingSlash(relName)
+		} else {
+			sh.sheetName = joinWithWkbkPath(zi.wkbkName, relName)
+		}
+
 		sh.fileIndex = zfind(zr, sh.sheetName)
 
 		if sh.fileIndex < 0 || sh.fileIndex >= len(zr.File) {

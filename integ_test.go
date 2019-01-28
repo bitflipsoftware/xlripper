@@ -1,8 +1,11 @@
 package xlripper
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -12,13 +15,22 @@ import (
 
 const (
 	extMeta = "meta.json"
+	extXLSX = "xlsx"
 )
 
-type Meta struct {
-	Name              string `json:"name"`
-	Description       string `json:"description"`
-	IsFailureExpected bool   `json:"is_failure_expected"`
-	Sheets            string `json:"sheets"`
+type Manifest struct {
+	Name              string   `json:"name"`
+	Description       string   `json:"description"`
+	IsFailureExpected bool     `json:"is_failure_expected"`
+	Sheets            []string `json:"sheets"`
+}
+
+type IntegTest struct {
+	Manifest     Manifest
+	MetaFilename string
+	Root         string
+	FileXLSX     os.FileInfo
+	FileSheets   []os.FileInfo
 }
 
 func TestInteg(t *testing.T) {
@@ -60,6 +72,8 @@ func TestInteg(t *testing.T) {
 		}
 	}
 
+	tests := make([]IntegTest, 0)
+
 metaParseLoop:
 	for _, jsonFile := range jsonFiles {
 		jsonPath := path.Join(integDir, jsonFile.Name())
@@ -70,21 +84,12 @@ metaParseLoop:
 			continue metaParseLoop
 		}
 
-		jsonBytes := make([]byte, 0)
-		jsonLen, err := ofile.Read(jsonBytes)
-
-		if err != nil {
-			t.Errorf("error trying to read bytes of %s - %s", jsonPath, err.Error())
-			ofile.Close()
-			continue metaParseLoop
-		} else if jsonLen == 0 {
-			t.Errorf("%s seems to be empty", jsonPath)
-			ofile.Close()
-			continue metaParseLoop
-		}
-
+		jsonBuf := bytes.Buffer{}
+		jsonBufw := bufio.NewWriter(&jsonBuf)
+		io.Copy(jsonBufw, ofile)
+		jsonBytes := jsonBuf.Bytes()
 		ofile.Close()
-		m := Meta{}
+		m := Manifest{}
 		err = json.Unmarshal(jsonBytes, &m)
 
 		if err != nil {
@@ -92,8 +97,92 @@ metaParseLoop:
 			continue metaParseLoop
 		}
 
-		use(m)
+		if len(m.Sheets) == 0 {
+			t.Errorf("no sheets were found in the manifest %s", jsonPath)
+			continue metaParseLoop
+		}
+
+		itest := IntegTest{}
+		itest.Manifest = m
+		itest.Root = jsonFile.Name()[:len(jsonFile.Name())-len(extMeta)]
+		itest.MetaFilename = jsonFile.Name()
+		if len(itest.Root) > 0 {
+			if itest.Root[0:1] == "." {
+				itest.Root = itest.Root[1:]
+			}
+		}
+
+		if len(itest.Root) > 0 {
+			if itest.Root[len(itest.Root)-1:] == "." {
+				itest.Root = itest.Root[:len(itest.Root)-1]
+			}
+		}
+
+		if len(itest.Root) > 0 {
+			tests = append(tests, itest)
+		}
 	}
 
-	fmt.Print(files)
+	tests = gatherTests(t, tests, files, integDir)
+}
+
+func gatherTests(t *testing.T, tests []IntegTest, files []os.FileInfo, dir string) []IntegTest {
+	for itestIX, itest := range tests {
+		expectedX := strings.ToLower(itest.Root + "." + extXLSX)
+		if itest.Manifest.Name != expectedX {
+			t.Errorf("the name found in %s should be %s", itest.MetaFilename, expectedX)
+		}
+
+		isXLSXFound := false
+
+	xlsxFileSearchLoop:
+		for _, f := range files {
+			if strings.ToLower(f.Name()) == expectedX {
+				itest.FileXLSX = f
+				isXLSXFound = true
+				break xlsxFileSearchLoop
+			}
+		}
+
+		if !isXLSXFound {
+			t.Errorf("the xlsx file %s could not be found", expectedX)
+		}
+
+		expectedNumSheets := len(itest.Manifest.Sheets)
+
+		if expectedNumSheets == 0 {
+			t.Errorf("the manifest has zero sheets: %s", itest.MetaFilename)
+		}
+
+		itest.FileSheets = make([]os.FileInfo, 0)
+
+		for sheetIX, _ := range itest.Manifest.Sheets {
+			sheetCsvName := fmt.Sprintf("%s.sheet%d.csv", itest.Root, sheetIX)
+		sheetFileSearchLoop:
+			for _, f := range files {
+				if strings.ToLower(f.Name()) == sheetCsvName {
+					itest.FileSheets = append(itest.FileSheets, f)
+					break sheetFileSearchLoop
+				}
+				t.Errorf("%s was not found", sheetCsvName)
+			}
+		}
+
+		tests[itestIX] = itest
+	}
+
+	parser, err := NewParser(path.Join(dir, "bi.xlsx"))
+
+	if err != nil {
+		panic(err)
+	}
+
+	sheets, err := parser.Parse()
+
+	if err != nil {
+		panic(err)
+	}
+
+	use(sheets)
+	return tests
 }

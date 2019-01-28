@@ -597,3 +597,9 @@ func TestShSetLast(t *testing.T) {
 		t.Error(tfail(tn, fmt.Sprintf("shSetLast(\"%s\", %d)", string(runes), input), got, want))
 	}
 }
+
+func TestGsheetRowClose(t *testing.T) {
+	str := strRowCloseTest
+	got := shTagCloseFind([]rune(str), 0, len(strRowCloseTest), "row")
+	use(got)
+}

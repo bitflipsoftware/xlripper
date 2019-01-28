@@ -54,6 +54,11 @@ rowLoop:
 			break rowLoop
 		}
 
+		//if closeLoc.first == closeLoc.last {
+		//	// self closing tag
+		//	closeLoc = openLoc
+		//}
+
 		rowLoc := tagLoc{openLoc, closeLoc}
 		r := rowInfo{}
 		r.rowLoc = rowLoc
@@ -294,8 +299,20 @@ findOpenTag:
 func shTagCloseFind(runes []rune, first, last int, elem string) indexPair {
 	e := shSetLast(runes, last)
 	ix := shSetFirst(runes, first)
+	str := string(runes[ix : e+1])
+	use(str)
 	var r rune
 	foundFirst := -1
+
+	// stop right away if the tag was self-closing
+	if ix >= 2 {
+		lookback := string(runes[ix-2 : ix])
+		if lookback == "/>" {
+			// this is a self closing tag
+			return indexPair{ix - 1, ix - 1}
+		}
+		use(lookback)
+	}
 
 findLeftChevron:
 	for ; ix <= e; ix++ {
@@ -347,6 +364,13 @@ findLeftChevron:
 			return badPair
 		}
 
+		// if first==last it means that the nested call to shTagCloseFind above was self-closing
+		if nestedCloseLoc.first == nestedCloseLoc.last {
+			if nestedCloseLoc.first <= e {
+				return nestedCloseLoc
+			}
+		}
+
 		// now we have advanced beyond the nested element
 		// we need to call ourself again to find the closing tag
 		localFoundPair := shTagCloseFind(runes, ix, e, elem)
@@ -367,6 +391,11 @@ findLeftChevron:
 		return badPair
 	}
 
+	if ix == 914 {
+		use(ix)
+	}
+
+	// TODO - find out if the searcher had a self-closing tag?
 	foundLast := shTagCompletion(runes, ix, last, elem)
 
 	if foundLast <= ix {

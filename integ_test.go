@@ -208,8 +208,8 @@ func runIntegTest(t *testing.T, test IntegTest, dir string) {
 	}
 
 	for sheetIX := 0; sheetIX < wantNumSheets; sheetIX++ {
-		sheetName := parser.SheetNames()[sheetIX]
-		localTestName := fmt.Sprintf("%s %s", tn, sheetName)
+		//sheetName := parser.SheetNames()[sheetIX]
+		localTestName := fmt.Sprintf("%s sheet[%d]", tn, sheetIX)
 		testSheetDataParsing(t, localTestName, sheetIX, parser, test, dir)
 	}
 }
@@ -259,10 +259,32 @@ csvLoop:
 	sheet, err := parser.ParseOne(sheetIndex)
 
 	if err != nil {
-		// TODO - tfail
+		t.Errorf("%s: received error during xlsx paring of sheet %d: %s", testName, sheetIndex, err.Error())
 	}
 
 	numRows, numCols := findMaxRowAndColumnLengths(sheet, csvRows)
+
+	for rowIX := 0; rowIX < numRows; rowIX++ {
+		for colIX := 0; colIX < numCols; colIX++ {
+			csvVal, csvOK := getCsvValue(csvRows, rowIX, colIX)
+			xlsxVal, xlsxOK := getXLSXValue(sheet, rowIX, colIX)
+			thisTest := fmt.Sprintf("%s rowIX %d, colIX %d", testName, rowIX, colIX)
+
+			if csvOK && len(csvVal) > 0 {
+				if !xlsxOK {
+					t.Errorf(tfail(thisTest, "csvOK && len(csvVal) > 0 && !xlsxOK", btos(true), btos(false)))
+				}
+			} else if xlsxOK && len(xlsxVal) > 0 {
+				if !csvOK {
+					t.Errorf(tfail(thisTest, "xlsxOK && len(xlsxVal) > 0 && !csvOK", btos(true), btos(false)))
+				}
+			}
+
+			if csvVal != xlsxVal {
+				t.Errorf(tfail(thisTest, "xlsxVal", xlsxVal, csvVal))
+			}
+		}
+	}
 
 	use(sheetName)
 	use(numRows)
@@ -274,8 +296,8 @@ func findMaxRowAndColumnLengths(sheet Sheet, csvRows [][]string) (numRows, numCo
 	xNumRows := -1
 
 	for _, c := range sheet.Columns {
-		if len(c.Cells) < xNumRows {
-			xNumCols = len(c.Cells)
+		if len(c.Cells) > xNumRows {
+			xNumRows = len(c.Cells)
 		}
 	}
 
@@ -284,7 +306,7 @@ func findMaxRowAndColumnLengths(sheet Sheet, csvRows [][]string) (numRows, numCo
 
 	for _, r := range csvRows {
 		if len(r) > cNumCols {
-			cNumCols = cNumRows
+			cNumCols = len(r)
 		}
 	}
 
@@ -294,22 +316,22 @@ func findMaxRowAndColumnLengths(sheet Sheet, csvRows [][]string) (numRows, numCo
 
 }
 
-func getCsvValue(csvRows [][]string, rowIX, colIX int) string {
+func getCsvValue(csvRows [][]string, rowIX, colIX int) (value string, ok bool) {
 	if rowIX < 0 || colIX < 0 {
-		return ""
+		return "", false
 	}
 
 	if rowIX >= len(csvRows) {
-		return ""
+		return "", false
 	}
 
 	row := csvRows[rowIX]
 
 	if colIX >= len(row) {
-		return ""
+		return "", false
 	}
 
-	return row[colIX]
+	return row[colIX], true
 }
 
 func getXLSXValue(sheet Sheet, rowIX, colIX int) (value string, ok bool) {
@@ -327,7 +349,7 @@ func getXLSXValue(sheet Sheet, rowIX, colIX int) (value string, ok bool) {
 		return "", false
 	}
 
-	cell := col.Cells[colIX]
+	cell := col.Cells[rowIX]
 
 	if cell == nil {
 		return "", true

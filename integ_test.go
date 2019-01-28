@@ -205,6 +205,12 @@ func runIntegTest(t *testing.T, test IntegTest, dir string) {
 	for sheetIX := 0; sheetIX < wantNumSheets; sheetIX++ {
 		testSheetName(t, tn, sheetIX, parser, test)
 	}
+
+	for sheetIX := 0; sheetIX < wantNumSheets; sheetIX++ {
+		sheetName := parser.SheetNames()[sheetIX]
+		localTestName := fmt.Sprintf("%s %s", tn, sheetName)
+		testSheetDataParsing(t, localTestName, sheetIX, parser, test)
+	}
 }
 
 func testSheetName(t *testing.T, testName string, sheetIndex int, parser Parser, test IntegTest) {
@@ -213,4 +219,8 @@ func testSheetName(t *testing.T, testName string, sheetIndex int, parser Parser,
 	if want != got {
 		t.Errorf(testName, fmt.Sprintf("parser.SheetNames()[%d]", sheetIndex), got, want)
 	}
+}
+
+func testSheetDataParsing(t *testing.T, testName string, sheetIndex int, parser Parser, test IntegTest) {
+
 }

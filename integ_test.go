@@ -265,6 +265,7 @@ csvLoop:
 	}
 
 	numRows, numCols := findMaxRowAndColumnLengths(sheet, csvRows)
+	failures := 0
 
 	for rowIX := 0; rowIX < numRows; rowIX++ {
 		for colIX := 0; colIX < numCols; colIX++ {
@@ -298,6 +299,12 @@ csvLoop:
 
 			if !testPasses {
 				t.Error(tfail(thisTest, "xlsxVal", xlsxVal, csvVal))
+				failures++
+
+				if failures >= 100 {
+					t.Errorf("%s: more than 100 failures, aborting assertions on this file", testName)
+					return
+				}
 			}
 		}
 	}
@@ -345,7 +352,6 @@ func findMaxRowAndColumnLengths(sheet Sheet, csvRows [][]string) (numRows, numCo
 	maxCols := maxi(xNumCols, cNumCols)
 	maxRows := maxi(xNumRows, cNumRows)
 	return maxRows, maxCols
-
 }
 
 func getCsvValue(csvRows [][]string, rowIX, colIX int) (value string, ok bool) {

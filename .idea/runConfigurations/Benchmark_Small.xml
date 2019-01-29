@@ -1,13 +1,13 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Test" type="GoTestRunConfiguration" factoryName="Go Test">
+  <configuration default="false" name="Benchmark Small" type="GoTestRunConfiguration" factoryName="Go Test">
     <module name="xlripper" />
-    <working_directory value="$PROJECT_DIR$/" />
-    <go_parameters value="-i" />
-    <framework value="gotest" />
+    <working_directory value="$PROJECT_DIR$" />
+    <framework value="gobench" />
     <kind value="PACKAGE" />
     <package value="github.com/bitflip-software/xlripper" />
     <directory value="$PROJECT_DIR$/" />
     <filePath value="$PROJECT_DIR$/" />
+    <pattern value="^BenchmarkSmall$" />
     <method v="2" />
   </configuration>
 </component>

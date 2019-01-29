@@ -1,4 +1,4 @@
-package xlsx
+package xlripper
 
 import (
 	"bytes"
@@ -42,17 +42,22 @@ func shparse(zs zstruct, sheetIndex int) (Sheet, error) {
 
 rowLoop:
 	for {
-		openLoc := shFindFirstOccurenceOfElement(data, next, len(data), "row")
+		openLoc, _ := shFindFirstOccurenceOfElement(data, next, len(data), "row")
 
 		if openLoc == badPair {
 			break rowLoop
 		}
 
-		closeLoc := shTagCloseFind(data, openLoc.last+1, len(data), "row")
+		closeLoc, _ := shTagCloseFind(data, openLoc.last+1, len(data), "row")
 
 		if closeLoc == badPair {
 			break rowLoop
 		}
+
+		//if closeLoc.first == closeLoc.last {
+		//	// self closing tag
+		//	closeLoc = openLoc
+		//}
 
 		rowLoc := tagLoc{openLoc, closeLoc}
 		r := rowInfo{}
@@ -111,7 +116,7 @@ func shadvance(runes []rune, start int, r rune) int {
 }
 
 // shFindFirstOccurenceOfElement does stuff
-func shFindFirstOccurenceOfElement(runes []rune, first, last int, elem string) indexPair {
+func shFindFirstOccurenceOfElement(runes []rune, first, last int, elem string) (location indexPair, isSelfClosing bool) {
 	ix := shSetFirst(runes, first)
 	e := shSetLast(runes, last)
 
@@ -122,16 +127,16 @@ func shFindFirstOccurenceOfElement(runes []rune, first, last int, elem string) i
 	lChevPos := ix
 
 	if ix > e || runes[ix] != lChevron {
-		return badPair
+		return badPair, false
 	}
 
 	open := badPair
 
 	if runes[ix] != '/' {
-		open, ix = shTagOpenFind(runes, lChevPos, e, elem)
+		open, ix, isSelfClosing = shTagOpenFind(runes, lChevPos, e, elem)
 
 		if open != badPair {
-			return open
+			return open, isSelfClosing
 		}
 	}
 
@@ -140,15 +145,15 @@ func shFindFirstOccurenceOfElement(runes []rune, first, last int, elem string) i
 	}
 
 	if ix > e {
-		return badPair
+		return badPair, false
 	} else if runes[ix] != rChevron {
-		return badPair
+		return badPair, false
 	}
 
 	ix++
 
 	if ix > e {
-		return badPair
+		return badPair, false
 	}
 
 	return shFindFirstOccurenceOfElement(runes, ix, e, elem)
@@ -209,7 +214,7 @@ findNamespaceColon:
 // shIsTag returns true if the tag matches the desired element and false if it does not. specify whether it is an open
 // tag or a close tag with isCloseTag. 'first' must be pointing to the first char 'inside' the tag, that is after '<'
 // or '</'. returns the location of the closing '>' or -1 if the tag is not well formed or does not match elem
-func shTagCompletion(runes []rune, first, last int, elem string) int {
+func shTagCompletion(runes []rune, first, last int, elem string) (location int, isSelfClosing bool) {
 	e := shSetLast(runes, last)
 	ix := shSetFirst(runes, first)
 	var r rune
@@ -222,41 +227,45 @@ func shTagCompletion(runes []rune, first, last int, elem string) int {
 
 	// we should be pointing at the first rune of the element name now
 	if ix > e || r == '<' || r == ':' || r == ' ' || r == '>' {
-		return -1
+		return -1, false
 	}
 
 	elemRunes := []rune(elem)
 	elemLen := len(elemRunes)
 	for elemIx := 0; elemIx < elemLen; elemIx++ {
 		if ix > e {
-			return -1
+			return -1, false
 		}
 		r = runes[ix]
 		if r == '>' {
-			return -1
+			return -1, false
 		} else if r == ':' {
-			return -1
+			return -1, false
 		} else if r != elemRunes[elemIx] {
-			return -1
+			return -1, false
 		}
 		ix++
 	}
 
 	// proceed to close
+	slashPos := -1
 	for ; ix <= e; ix++ {
 		r = runes[ix]
-		if r == '>' {
-			return ix
+		if r == '/' {
+			slashPos = ix
+		} else if r == '>' {
+			selfClosing := slashPos == ix-1
+			return ix, selfClosing
 		}
 	}
 
-	return -1
+	return -1, false
 }
 
 // shTagOpenFind returns the first and last indices of an element open tag with the name 'elem' (ignoring namespace).
 // {-1, -1} indicates that no matching open tag was found. 'last' is the last rune that you want inspected for a closing
 // tag. this is unlike slice indexing and more like traditional range indexing. enter -1 to go to the end of the runes.
-func shTagOpenFind(runes []rune, first, last int, elem string) (found indexPair, lastCheckedIndex int) {
+func shTagOpenFind(runes []rune, first, last int, elem string) (found indexPair, lastCheckedIndex int, isSelfClosing bool) {
 	e := shSetLast(runes, last)
 	ix := shSetFirst(runes, first)
 	var r rune
@@ -274,16 +283,16 @@ findOpenTag:
 	ix++
 
 	if ix > e {
-		return badPair, ix
+		return badPair, ix, false
 	}
 
-	foundLast := shTagCompletion(runes, ix, e, elem)
+	foundLast, isSelfClosing := shTagCompletion(runes, ix, e, elem)
 
 	if foundLast <= ix {
-		return badPair, ix
+		return badPair, ix, false
 	}
 
-	return indexPair{foundFirst, foundLast}, ix
+	return indexPair{foundFirst, foundLast}, ix, isSelfClosing
 }
 
 // shTagCloseFind returns the first and last indices of an element close tag with the name 'elem' (ignoring namespace).
@@ -291,11 +300,22 @@ findOpenTag:
 // tags are skipped. 'first' must be the first rune index that is inside of the element you want to find the close for.
 // 'last' is the last rune that you want inspected for a closing tag. this is unlike slice indexing and more like
 // traditional range indexing. enter -1 to go to the end of the runes
-func shTagCloseFind(runes []rune, first, last int, elem string) indexPair {
+// note: shTagCloseFind is not designed to work with self-closing tags
+func shTagCloseFind(runes []rune, first, last int, elem string) (location indexPair, isSelfClosing bool) {
 	e := shSetLast(runes, last)
 	ix := shSetFirst(runes, first)
 	var r rune
 	foundFirst := -1
+
+	// stop right away if the tag was self-closing
+	//if ix >= 2 {
+	//	lookback := string(runes[ix-2 : ix])
+	//	if lookback == "/>" {
+	//		// this is a self closing tag
+	//		return indexPair{ix - 1, ix - 1}, true
+	//	}
+	//	use(lookback)
+	//}
 
 findLeftChevron:
 	for ; ix <= e; ix++ {
@@ -309,54 +329,64 @@ findLeftChevron:
 	ix++
 
 	if ix > e {
-		return badPair
+		return badPair, false
 	}
 
 	r = runes[ix]
 
 	if r != '/' {
-		localElemName, localElemLast := shTagNameFind(runes, ix, e)
+		nestedElem, nestedElemRightChevronPos, isNestedSelfClosing := shTagNameFind(runes, ix, e)
 
-		if len(localElemName) == 0 || localElemLast < 0 {
-			return badPair
+		if len(nestedElem) == 0 || nestedElemRightChevronPos < 0 {
+			return badPair, false
 		}
 
-		ix = localElemLast
+		ix = nestedElemRightChevronPos
 
 		if runes[ix] != rChevron {
-			return badPair
+			return badPair, false
 		}
 
 		ix++
 
-		if ix > e {
-			return badPair
+		if !isNestedSelfClosing {
+			if ix > e {
+				return badPair, false
+			}
+
+			// now we are inside of a nested element
+			nestedCloseLoc, _ := shTagCloseFind(runes, ix, e, nestedElem)
+			//use(isNestedSelfClosing)
+
+			if nestedCloseLoc == badPair {
+				return badPair, false
+			}
+
+			ix = nestedCloseLoc.last
+			ix++
+
+			if ix > e {
+				return badPair, false
+			}
 		}
 
-		// now we are inside of a nested element
-		nestedCloseLoc := shTagCloseFind(runes, ix, e, localElemName)
-
-		if nestedCloseLoc == badPair {
-			return badPair
-		}
-
-		ix = nestedCloseLoc.last
-		ix++
-
-		if ix > e {
-			return badPair
-		}
+		// if first==last it means that the nested call to shTagCloseFind above was self-closing
+		//if isNestedSelfClosing {
+		//	if nestedCloseLoc.first <= e {
+		//		return nestedCloseLoc, isNestedSelfClosing
+		//	}
+		//}
 
 		// now we have advanced beyond the nested element
 		// we need to call ourself again to find the closing tag
-		localFoundPair := shTagCloseFind(runes, ix, e, elem)
-		return localFoundPair
+		localFoundPair, isLocalFoundSelfClosing := shTagCloseFind(runes, ix, e, elem)
+		return localFoundPair, isLocalFoundSelfClosing
 	}
 
 	ix++
 
 	if ix > e {
-		return badPair
+		return badPair, false
 	}
 
 	for ; ix <= e && unicode.IsSpace(runes[ix]); ix++ {
@@ -364,42 +394,47 @@ findLeftChevron:
 	}
 
 	if ix > e {
-		return badPair
+		return badPair, false
 	}
 
-	foundLast := shTagCompletion(runes, ix, last, elem)
+	foundLast, isSelfClosing := shTagCompletion(runes, ix, last, elem)
 
 	if foundLast <= ix {
-		return badPair
+		return badPair, false
 	}
 
-	return indexPair{foundFirst, foundLast}
+	return indexPair{foundFirst, foundLast}, isSelfClosing
 }
 
 // shTagFind returns the open and close locations for the desired tag 'elem' returns -1 (somewhere) if not found.
 // 'last' is the last rune that you want inspected for a closing tag. this is unlike slice indexing and more like
 // traditional range indexing. enter -1 to go to the end of the runes
-func shTagFind(runes []rune, first, last int, elem string) tagLoc {
+func shTagFind(runes []rune, first, last int, elem string) (location tagLoc, isSelfClosing bool) {
 	ix := shSetFirst(runes, first)
 	e := shSetLast(runes, last)
 	open := badPair
 
 	for ; ix <= e && open == badPair; ix++ {
-		open, ix = shTagOpenFind(runes, ix, e, elem)
+		open, ix, isSelfClosing = shTagOpenFind(runes, ix, e, elem)
 		ix--
 	}
 
 	if open == badPair {
-		return badTagLoc
+		return badTagLoc, false
 	}
 
-	close := shTagCloseFind(runes, open.last+1, last, elem)
+	if isSelfClosing {
+		close := indexPair{open.last, open.last}
+		return tagLoc{open, close}, isSelfClosing
+	}
+
+	close, isSelfClosing := shTagCloseFind(runes, open.last+1, last, elem)
 
 	if close == badPair {
-		return badTagLoc
+		return badTagLoc, false
 	}
 
-	return tagLoc{open, close}
+	return tagLoc{open, close}, isSelfClosing
 }
 
 // shSetLast returns a safe 'last' value for loops on 'runes'
@@ -424,22 +459,23 @@ func shSetFirst(runes []rune, first int) int {
 
 // shTagNameFind returns the name of an element and the position of the close '>' for that element. 'first' should be
 // pointing at the first rune after '<' or '</'. if the element cannot be parsed, -1 is returned for 'lastPos'
-func shTagNameFind(runes []rune, first, last int) (elem string, lastPos int) {
+func shTagNameFind(runes []rune, first, last int) (elem string, lastPos int, isSelfClosing bool) {
 	e := shSetLast(runes, last)
 	ix := shSetFirst(runes, first)
+	isSelfClosing = false
 
 	for ; ix <= e && runes[ix] == ' '; ix++ {
 		// advance the index
 	}
 
 	if ix > e {
-		return "", -1
+		return "", -1, false
 	} else if runes[ix] == ' ' {
 		ix++
 	}
 
 	if ix > e {
-		return "", -1
+		return "", -1, false
 	}
 
 	namespaceColonPos := shFindNamespaceColon(runes, ix, e)
@@ -449,27 +485,39 @@ func shTagNameFind(runes []rune, first, last int) (elem string, lastPos int) {
 
 	strbuf := bytes.Buffer{}
 
-	for ; ix <= e && runes[ix] != ' ' && runes[ix] != '>' && runes[ix] != '=' && runes[ix] != '"'; ix++ {
+	for ; ix <= e && runes[ix] != ' ' && runes[ix] != '>' && runes[ix] != '=' && runes[ix] != '"' && runes[ix] != '/'; ix++ {
 		strbuf.WriteRune(runes[ix])
 	}
+
+	// handled below i think
+	//if runes[ix] == '/' {
+	//	isSelfClosing = true
+	//}
 
 	elem = strbuf.String()
 
 	if len(elem) == 0 {
-		return "", -1
+		return "", -1, false
 	}
 
 	if ix > e {
-		return "", -1
+		return "", -1, false
 	}
 
+	slashPos := -1
 	for ; ix <= e && runes[ix] != '>'; ix++ {
-		// advance ix to find the closing of the tag
+		if runes[ix] == '/' {
+			slashPos = ix
+		}
+	}
+
+	if slashPos == ix-1 {
+		isSelfClosing = true
 	}
 
 	if runes[ix] == '>' {
-		return elem, ix
+		return elem, ix, isSelfClosing
 	}
 
-	return "", -1
+	return "", -1, false
 }

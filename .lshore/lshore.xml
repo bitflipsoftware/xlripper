@@ -6,19 +6,19 @@
         <repo-provider>./Dockerfile.repo</repo-provider>
     </meta>
     <instances>
-        <instance name="test">
+        <instance name="gandalf">
             <instance-size>
-                <cpu-cores>2</cpu-cores>
-                <ram-gb>4</ram-gb>
-                <storage-size-gb>16</storage-size-gb>
+                <cpu-cores>4</cpu-cores>
+                <ram-gb>16</ram-gb>
+                <storage-size-gb>32</storage-size-gb>
             </instance-size>
             <runnables>
                 <runnable>
                     <docker-compose>
                         <filepath>./docker-compose.yml</filepath>
                         <sentinels>
-                            <sentinel name="testrunner">
-                                <timeout-seconds>240</timeout-seconds>
+                            <sentinel name="xlripper">
+                                <timeout-seconds>900</timeout-seconds>
                                 <required-exit-code>0</required-exit-code>
                             </sentinel>
                         </sentinels>

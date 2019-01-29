@@ -1,4 +1,4 @@
-package xlsx
+package xlripper
 
 import (
 	"fmt"
@@ -305,9 +305,10 @@ func TestShFindRow(t *testing.T) {
 	openTag := badPair
 	closeTag := badPair
 	chunk := ""
+	isSelfClosing := true
 
-	openTag = shFindFirstOccurenceOfElement(data, next, len(data), "row")
-	closeTag = shTagCloseFind(data, openTag.last+1, len(data), "row")
+	openTag, isSelfClosing = shFindFirstOccurenceOfElement(data, next, len(data), "row")
+	closeTag, isSelfClosing = shTagCloseFind(data, openTag.last+1, len(data), "row")
 	stmt = fmt.Sprintf("first, last = shFindFirstOccurenceOfElement(data, %d)", next)
 	got = itos(openTag.first)
 	want = itos(999)
@@ -321,6 +322,13 @@ func TestShFindRow(t *testing.T) {
 
 	if got != want {
 		t.Error(tfail(tn, stmt+"; last", got, want))
+	}
+
+	got = btos(isSelfClosing)
+	want = btos(false)
+
+	if got != want {
+		t.Error(tfail(tn, "isSelfClosing", got, want))
 	}
 
 	if openTag.first < 0 || openTag.first >= len(data) || openTag.last < 0 || openTag.last >= len(data) || openTag.first > openTag.last {
@@ -444,60 +452,108 @@ func TestShBadC(t *testing.T) {
 }
 
 type input struct {
-	xml   string
-	first int
-	last  int
-	tag   string
-	open  indexPair
-	close indexPair
+	xml           string
+	first         int
+	last          int
+	tag           string
+	open          indexPair
+	close         indexPair
+	isSelfClosing bool
 }
 
 var inputs = []input{
 	input{
-		xml:   "sg07bloopsgn<jk:bloop >dføg978sg9</     bloop>",
-		first: 0,
-		last:  -1,
-		tag:   "bloop",
-		open:  indexPair{12, 22},
-		close: indexPair{33, 45},
+		xml:           "sg07bloopsgn<jk:bloop >dføg978sg9</     bloop>",
+		first:         0,
+		last:          -1,
+		tag:           "bloop",
+		open:          indexPair{12, 22},
+		close:         indexPair{33, 45},
+		isSelfClosing: false,
 	},
 	input{
-		xml:   "sg07< bloopsgn<jk:bloop >dfsg978sg9<><><><SFG</     bloop>",
-		first: 0,
-		last:  -1,
-		tag:   "bloop",
-		open:  badPair,
-		close: badPair,
+		xml:           "sg07< bloopsgn<jk:bloop >dfsg978sg9<><><><SFG</     bloop>",
+		first:         0,
+		last:          -1,
+		tag:           "bloop",
+		open:          badPair,
+		close:         badPair,
+		isSelfClosing: false,
 	},
 	input{
-		xml:   "<hello:row><row></row></ hello:row>whatever",
-		first: 0,
-		last:  -1,
-		tag:   "row",
-		open:  indexPair{0, 10},
-		close: indexPair{22, 34},
+		xml:           "<hello:row><row></row></ hello:row>whatever",
+		first:         0,
+		last:          -1,
+		tag:           "row",
+		open:          indexPair{0, 10},
+		close:         indexPair{22, 34},
+		isSelfClosing: false,
+	},
+	input{
+		xml:           "<a><b/></a>",
+		first:         0,
+		last:          -1,
+		tag:           "a",
+		open:          indexPair{0, 2},
+		close:         indexPair{7, 10},
+		isSelfClosing: false,
+	},
+	input{
+		xml:           "<a><b/></a>",
+		first:         2,
+		last:          -1,
+		tag:           "b",
+		open:          indexPair{3, 6},
+		close:         indexPair{-1, -1}, // shTagCloseFind is not designed to work with self-closing tags
+		isSelfClosing: true,
+	},
+	input{
+		xml:           "<row>" + strRowCloseTest,
+		first:         0,
+		last:          -1,
+		tag:           "row",
+		open:          indexPair{0, 4},
+		close:         indexPair{921, 926}, // shTagCloseFind is not designed to work with self-closing tags
+		isSelfClosing: false,
 	},
 }
 
 func TestShTagFind(t *testing.T) {
-
 	for ix, input := range inputs {
-		result, _ := shTagOpenFind([]rune(input.xml), input.first, input.last, input.tag)
+		result, _, isOpenTagSelfClosing := shTagOpenFind([]rune(input.xml), input.first, input.last, input.tag)
 		expected := input.open
 		if result != expected {
-			t.Error(tagFindOpenErr(ix, expected, result))
-		}
-		start := result.last + 1
-		result = shTagCloseFind([]rune(input.xml), start, input.last, input.tag)
-		expected = input.close
-		if result != expected {
-			t.Error(tagFindCloseErr(ix, expected, result))
+			t.Error(tagFindOpenErr(ix, expected, result, input))
 		}
 
-		finalResult := shTagFind([]rune(input.xml), input.first, input.last, input.tag)
+		// note: shTagCloseFind is not designed to work with self-closing tags
+		if !isOpenTagSelfClosing {
+			start := result.last + 1
+			result, _ := shTagCloseFind([]rune(input.xml), start, input.last, input.tag)
+
+			expected = input.close
+			if result != expected {
+				t.Error(tagFindCloseErr(ix, expected, result, input))
+			}
+		}
+
+		finalResult, isSelfClosing := shTagFind([]rune(input.xml), input.first, input.last, input.tag)
 		finalExpected := tagLoc{open: input.open, close: input.close}
+
+		if input.isSelfClosing {
+			selfCloseLoc := indexPair{
+				input.open.last,
+				input.open.last,
+			}
+			finalExpected = tagLoc{open: input.open, close: selfCloseLoc}
+		}
+
 		if finalResult != finalExpected {
-			t.Error(tagFindErr(ix, finalExpected, finalResult))
+			t.Error(tagFindErr(ix, finalExpected, finalResult, input))
+		}
+
+		if isSelfClosing != input.isSelfClosing {
+			t.Error(tfail(t.Name(), "isSelfClosing", btos(isSelfClosing), btos(input.isSelfClosing)))
 		}
 	}
 }
@@ -505,50 +561,81 @@ func TestShTagFind(t *testing.T) {
 func TestShTagNameFind(t *testing.T) {
 	tn := "TestShTagNameFind"
 	type tagNameFindInput struct {
-		str          string
-		first        int
-		last         int
-		expectedElem string
-		expectedLast int
+		str           string
+		first         int
+		last          int
+		expectedElem  string
+		expectedLast  int
+		isSelfClosing bool
 	}
 
 	inputs := []tagNameFindInput{
 		{str: "skgshj:cberoy list=\"hi\" >",
-			first:        0,
-			last:         8888,
-			expectedElem: "cberoy",
-			expectedLast: 24,
+			first:         0,
+			last:          8888,
+			expectedElem:  "cberoy",
+			expectedLast:  24,
+			isSelfClosing: false,
+		},
+		{str: "<x/>",
+			first:         1,
+			last:          8888,
+			expectedElem:  "x",
+			expectedLast:  3,
+			isSelfClosing: true,
+		},
+		{str: "<x    />",
+			first:         1,
+			last:          8888,
+			expectedElem:  "x",
+			expectedLast:  7,
+			isSelfClosing: true,
+		},
+		{str: "<ns:x    />",
+			first:         1,
+			last:          8888,
+			expectedElem:  "x",
+			expectedLast:  10,
+			isSelfClosing: true,
 		},
 	}
 	for _, input := range inputs {
-		elem, last := shTagNameFind([]rune(input.str), input.first, input.last)
+		elem, last, isSelfClosing := shTagNameFind([]rune(input.str), input.first, input.last)
+		stmnt := fmt.Sprintf("elem, last, isSelfClosing := shTagNameFind([]rune(\"%s\"), %d, %d)", input.str, input.first, input.last)
 
 		if elem != input.expectedElem {
-			t.Errorf(tfail(tn, "elem, last := shTagNameFind([]rune(input.str), input.first, input.last) -> elem", elem, input.expectedElem))
+			t.Errorf(tfail(tn, stmnt+" -> elem", elem, input.expectedElem))
 		}
 
 		if last != input.expectedLast {
-			t.Errorf(tfail(tn, "elem, last := shTagNameFind([]rune(input.str), input.first, input.last) -> last", itos(last), itos(input.expectedLast)))
+			t.Errorf(tfail(tn, stmnt+" -> last", itos(last), itos(input.expectedLast)))
+		}
+
+		if isSelfClosing != input.isSelfClosing {
+			t.Errorf(tfail(tn, stmnt+" -> isSelfClosing", btos(isSelfClosing), btos(input.isSelfClosing)))
 		}
 	}
 }
 
-func tagFindOpenErr(index int, want, got indexPair) string {
-	statement := fmt.Sprintf("input index %d: shTagOpenFind([]rune(input.xml), input.first, input.tag)", index)
+func tagFindOpenErr(index int, want, got indexPair, input input) string {
+	fn := "shTagOpenFind"
+	statement := fmt.Sprintf("input index %d: %s([]rune(\"%s\"), %d, \"%s\")", index, fn, input.xml, input.first, input.tag)
 	gots := fmt.Sprintf("%v", got)
 	wants := fmt.Sprintf("%v", want)
 	return tfail("TestShTagFind", statement, gots, wants)
 }
 
-func tagFindCloseErr(index int, want, got indexPair) string {
-	statement := fmt.Sprintf("input index %d: shTagCloseFind([]rune(input.xml), input.first, input.tag)", index)
+func tagFindCloseErr(index int, want, got indexPair, input input) string {
+	fn := "shTagCloseFind"
+	statement := fmt.Sprintf("input index %d: %s([]rune(\"%s\"), %d, \"%s\")", index, fn, input.xml, input.first, input.tag)
 	gots := fmt.Sprintf("%v", got)
 	wants := fmt.Sprintf("%v", want)
 	return tfail("TestShTagFind", statement, gots, wants)
 }
 
-func tagFindErr(index int, want, got tagLoc) string {
-	statement := fmt.Sprintf("input index %d: shTagFind([]rune(input.xml), input.first, input.tag)", index)
+func tagFindErr(index int, want, got tagLoc, input input) string {
+	fn := "shTagFind"
+	statement := fmt.Sprintf("input index %d: %s([]rune(\"%s\"), %d, \"%s\")", index, fn, input.xml, input.first, input.tag)
 	gots := fmt.Sprintf("%v", got)
 	wants := fmt.Sprintf("%v", want)
 	return tfail("TestShTagFind", statement, gots, wants)
@@ -597,3 +684,11 @@ func TestShSetLast(t *testing.T) {
 		t.Error(tfail(tn, fmt.Sprintf("shSetLast(\"%s\", %d)", string(runes), input), got, want))
 	}
 }
+
+// TODO - finish writing this test
+//func TestGsheetRowClose(t *testing.T) {
+//	str := strRowCloseTest
+//	got, isSelfClosing := shTagCloseFind([]rune(str), 0, len(strRowCloseTest), "row")
+//	use(got)
+//	use(isSelfClosing)
+//}

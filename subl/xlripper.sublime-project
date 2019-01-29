@@ -2,7 +2,10 @@
 	"folders":
 	[
 		{
-			"path": ".."
+			"path": "/Users/mjb/repos/go/src/github.com/bitflip-software/xlripper"
+		},
+		{
+			"path": "/Users/mjb/Desktop/qlikview-raw"
 		}
 	]
 }

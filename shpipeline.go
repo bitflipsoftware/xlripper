@@ -1,4 +1,4 @@
-package xlsx
+package xlripper
 
 import (
 	"bytes"
@@ -10,11 +10,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/bitflip-software/xlsx/xmlprivate"
+	"github.com/bitflip-software/xlripper/xmlprivate"
 )
 
-var rowRoutines = runtime.NumCPU()
-var cellRoutines = runtime.NumCPU()
+var rowRoutines = maxi((runtime.NumCPU() / 2), 1)
+var cellRoutines = maxi((runtime.NumCPU() / 4), 2)
+var emptyString = ""
 
 type topInfo struct {
 	runes  []rune
@@ -68,13 +69,19 @@ func parseRow(r rowInfo) rowParseResult {
 
 cellLoop:
 	for {
-		openLoc := shFindFirstOccurenceOfElement(r.top.runes, ix, e, "c")
+		openLoc, isSelfClosing := shFindFirstOccurenceOfElement(r.top.runes, ix, e, "c")
 
 		if openLoc == badPair {
 			break cellLoop
 		}
 
-		closeLoc := shTagCloseFind(r.top.runes, openLoc.last+1, e, "c")
+		closeLoc := badPair
+
+		if !isSelfClosing {
+			closeLoc, _ = shTagCloseFind(r.top.runes, openLoc.last+1, e, "c")
+		} else {
+			closeLoc = indexPair{openLoc.last, openLoc.last}
+		}
 
 		if closeLoc == badPair {
 			break cellLoop
@@ -140,14 +147,27 @@ func parseCell(c cellInfo) cellParseResult {
 	result.rowIX = rowIX
 	result.colIX = colIX
 
+	if result.rowIX == 0 && result.colIX == 0 {
+		use(result)
+	}
+
 	if xmlC.T == "s" {
 		// should be a shared string
 		if sharedIX, err := strconv.Atoi(xmlC.V); err == nil {
 			shStr := c.rowInfo.top.shared.get(sharedIX)
 			result.value = shStr
 		}
+	} else if xmlC.T == "inlineString" {
+		result.value = &xmlC.InlineString.Str
 	} else {
-		result.value = &xmlC.V
+		if len(xmlC.V) > 0 {
+			result.value = &xmlC.V
+		} else if len(xmlC.InlineString.Str) > 0 {
+			result.value = &xmlC.InlineString.Str
+		} else {
+			result.value = &emptyString
+		}
+
 	}
 
 	return result

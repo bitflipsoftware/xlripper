@@ -8,9 +8,9 @@
     <instances>
         <instance name="gandalf">
             <instance-size>
-                <cpu-cores>32</cpu-cores>
-                <ram-gb>128</ram-gb>
-                <storage-size-gb>128</storage-size-gb>
+                <cpu-cores>4</cpu-cores>
+                <ram-gb>16</ram-gb>
+                <storage-size-gb>32</storage-size-gb>
             </instance-size>
             <runnables>
                 <runnable>

@@ -69,13 +69,18 @@ func parseRow(r rowInfo) rowParseResult {
 cellLoop:
 	for {
 		openLoc, isSelfClosing := shFindFirstOccurenceOfElement(r.top.runes, ix, e, "c")
-		use(isSelfClosing)
 
 		if openLoc == badPair {
 			break cellLoop
 		}
 
-		closeLoc, isSelfClosing := shTagCloseFind(r.top.runes, openLoc.last+1, e, "c")
+		closeLoc := badPair
+
+		if !isSelfClosing {
+			closeLoc, _ = shTagCloseFind(r.top.runes, openLoc.last+1, e, "c")
+		} else {
+			closeLoc = indexPair{openLoc.last, openLoc.last}
+		}
 
 		if closeLoc == badPair {
 			break cellLoop

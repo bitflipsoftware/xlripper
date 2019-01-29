@@ -1,6 +1,6 @@
 version: '2.2'
 services:
-  testrunner:
+  xlripper:
     restart: "no"
     build: 
       context: ..

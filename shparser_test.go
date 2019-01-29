@@ -685,9 +685,10 @@ func TestShSetLast(t *testing.T) {
 	}
 }
 
-func TestGsheetRowClose(t *testing.T) {
-	str := strRowCloseTest
-	got, isSelfClosing := shTagCloseFind([]rune(str), 0, len(strRowCloseTest), "row")
-	use(got)
-	use(isSelfClosing)
-}
+// TODO - finish writing this test
+//func TestGsheetRowClose(t *testing.T) {
+//	str := strRowCloseTest
+//	got, isSelfClosing := shTagCloseFind([]rune(str), 0, len(strRowCloseTest), "row")
+//	use(got)
+//	use(isSelfClosing)
+//}

@@ -42,14 +42,13 @@ func shparse(zs zstruct, sheetIndex int) (Sheet, error) {
 
 rowLoop:
 	for {
-		openLoc, isSelfClosing := shFindFirstOccurenceOfElement(data, next, len(data), "row")
-		use(isSelfClosing)
+		openLoc, _ := shFindFirstOccurenceOfElement(data, next, len(data), "row")
 
 		if openLoc == badPair {
 			break rowLoop
 		}
 
-		closeLoc, isSelfClosing := shTagCloseFind(data, openLoc.last+1, len(data), "row")
+		closeLoc, _ := shTagCloseFind(data, openLoc.last+1, len(data), "row")
 
 		if closeLoc == badPair {
 			break rowLoop
@@ -305,8 +304,6 @@ findOpenTag:
 func shTagCloseFind(runes []rune, first, last int, elem string) (location indexPair, isSelfClosing bool) {
 	e := shSetLast(runes, last)
 	ix := shSetFirst(runes, first)
-	str := string(runes[ix : e+1])
-	use(str)
 	var r rune
 	foundFirst := -1
 
@@ -358,18 +355,11 @@ findLeftChevron:
 			}
 
 			// now we are inside of a nested element
-			nestedCloseLoc, isNestedSelfClosing := shTagCloseFind(runes, ix, e, nestedElem)
+			nestedCloseLoc, _ := shTagCloseFind(runes, ix, e, nestedElem)
 			//use(isNestedSelfClosing)
 
 			if nestedCloseLoc == badPair {
 				return badPair, false
-			} else if isNestedSelfClosing {
-				//ix++
-				//
-				//if ix > e {
-				//	return badPair, false
-				//}
-				use(ix)
 			}
 
 			ix = nestedCloseLoc.last
@@ -407,13 +397,7 @@ findLeftChevron:
 		return badPair, false
 	}
 
-	if ix == 914 {
-		use(ix)
-	}
-
-	// TODO - find out if the searcher had a self-closing tag?
 	foundLast, isSelfClosing := shTagCompletion(runes, ix, last, elem)
-	use(isSelfClosing)
 
 	if foundLast <= ix {
 		return badPair, false

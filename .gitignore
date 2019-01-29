@@ -1,4 +1,8 @@
 *.sublime-workspace
+*.cpu.out
+*.cpu.pdf
+*.cpu.prof.pdf
+xlripper.test
 
 # Created by https://www.gitignore.io/api/jetbrains
 # Edit at https://www.gitignore.io/?templates=jetbrains

@@ -462,24 +462,24 @@ type input struct {
 }
 
 var inputs = []input{
-	//input{
-	//	xml:           "sg07bloopsgn<jk:bloop >dføg978sg9</     bloop>",
-	//	first:         0,
-	//	last:          -1,
-	//	tag:           "bloop",
-	//	open:          indexPair{12, 22},
-	//	close:         indexPair{33, 45},
-	//	isSelfClosing: false,
-	//},
-	//input{
-	//	xml:           "sg07< bloopsgn<jk:bloop >dfsg978sg9<><><><SFG</     bloop>",
-	//	first:         0,
-	//	last:          -1,
-	//	tag:           "bloop",
-	//	open:          badPair,
-	//	close:         badPair,
-	//	isSelfClosing: false,
-	//},
+	input{
+		xml:           "sg07bloopsgn<jk:bloop >dføg978sg9</     bloop>",
+		first:         0,
+		last:          -1,
+		tag:           "bloop",
+		open:          indexPair{12, 22},
+		close:         indexPair{33, 45},
+		isSelfClosing: false,
+	},
+	input{
+		xml:           "sg07< bloopsgn<jk:bloop >dfsg978sg9<><><><SFG</     bloop>",
+		first:         0,
+		last:          -1,
+		tag:           "bloop",
+		open:          badPair,
+		close:         badPair,
+		isSelfClosing: false,
+	},
 	input{
 		xml:           "<hello:row><row></row></ hello:row>whatever",
 		first:         0,
@@ -507,6 +507,15 @@ var inputs = []input{
 		close:         indexPair{-1, -1}, // shTagCloseFind is not designed to work with self-closing tags
 		isSelfClosing: true,
 	},
+	input{
+		xml:           "<row>" + strRowCloseTest,
+		first:         0,
+		last:          -1,
+		tag:           "row",
+		open:          indexPair{0, 4},
+		close:         indexPair{921, 926}, // shTagCloseFind is not designed to work with self-closing tags
+		isSelfClosing: false,
+	},
 }
 
 func TestShTagFind(t *testing.T) {
@@ -517,7 +526,7 @@ func TestShTagFind(t *testing.T) {
 			t.Error(tagFindOpenErr(ix, expected, result, input))
 		}
 
-		// shTagCloseFind is not designed to work with self-closing tags
+		// note: shTagCloseFind is not designed to work with self-closing tags
 		if !isOpenTagSelfClosing {
 			start := result.last + 1
 			result, _ := shTagCloseFind([]rune(input.xml), start, input.last, input.tag)

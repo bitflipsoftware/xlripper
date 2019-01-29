@@ -301,6 +301,7 @@ findOpenTag:
 // tags are skipped. 'first' must be the first rune index that is inside of the element you want to find the close for.
 // 'last' is the last rune that you want inspected for a closing tag. this is unlike slice indexing and more like
 // traditional range indexing. enter -1 to go to the end of the runes
+// note: shTagCloseFind is not designed to work with self-closing tags
 func shTagCloseFind(runes []rune, first, last int, elem string) (location indexPair, isSelfClosing bool) {
 	e := shSetLast(runes, last)
 	ix := shSetFirst(runes, first)
@@ -362,8 +363,6 @@ findLeftChevron:
 
 			if nestedCloseLoc == badPair {
 				return badPair, false
-			} else if !isNestedSelfClosing {
-				return nestedCloseLoc, isNestedSelfClosing
 			} else if isNestedSelfClosing {
 				//ix++
 				//

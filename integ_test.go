@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -223,7 +225,7 @@ func testSheetName(t *testing.T, testName string, sheetIndex int, parser Parser,
 }
 
 func testSheetDataParsing(t *testing.T, testName string, sheetIndex int, parser Parser, test IntegTest, dir string) {
-	sheetName := parser.SheetNames()[sheetIndex]
+	//sheetName := parser.SheetNames()[sheetIndex]
 	csvFilename := test.FileSheets[sheetIndex].Name()
 	csvPath := path.Join(dir, csvFilename)
 	ofile, err := os.Open(csvPath)
@@ -280,15 +282,45 @@ csvLoop:
 				}
 			}
 
-			if csvVal != xlsxVal {
-				t.Errorf(tfail(thisTest, "xlsxVal", xlsxVal, csvVal))
+			testPasses := areEqual(csvVal, xlsxVal)
+
+			if !testPasses {
+				// bizarre leading junk seems to be added at the start of a file exported with microsoft excel
+				if rowIX == 0 && colIX == 0 {
+					csvRunes := []rune(csvVal)
+					xlsxRunes := []rune(xlsxVal)
+
+					if len(csvRunes) == len(xlsxRunes)+1 {
+						testPasses = areEqual(xlsxVal, string(csvRunes[1:]))
+					}
+				}
+			}
+
+			if !testPasses {
+				t.Error(tfail(thisTest, "xlsxVal", xlsxVal, csvVal))
 			}
 		}
 	}
+}
 
-	use(sheetName)
-	use(numRows)
-	use(numCols)
+func areEqual(want, got string) (equal bool) {
+	if want == got {
+		return true
+	}
+
+	// check if they are different by some floating point imprecision
+	csvFloat, csvFloatErr := strconv.ParseFloat(want, 64)
+	xlsxFloat, xlsxFloatErr := strconv.ParseFloat(got, 64)
+
+	if csvFloatErr == nil && xlsxFloatErr == nil {
+		diff := math.Abs(csvFloat - xlsxFloat)
+
+		if diff < epsilon {
+			return true
+		}
+	}
+
+	return false
 }
 
 func findMaxRowAndColumnLengths(sheet Sheet, csvRows [][]string) (numRows, numCols int) {

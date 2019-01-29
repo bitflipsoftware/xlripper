@@ -19,11 +19,16 @@ import (
 const (
 	extMeta = "meta.json"
 	extXLSX = "xlsx"
+
+	// when this is specified only a test with this meta filename will run.
+	// e.g. when onlyRunthisTest = "large.meta.json" then only that test will run.
+	onlyRunThisTest = ""
 )
 
 type Manifest struct {
 	Name              string   `json:"name"`
 	Description       string   `json:"description"`
+	Epsilon           float64  `json:"epsilon"`
 	IsFailureExpected bool     `json:"is_failure_expected"`
 	Sheets            []string `json:"sheets"`
 }
@@ -70,7 +75,9 @@ func TestInteg(t *testing.T) {
 		if len(nm) >= len(extMeta) {
 			ext := nm[len(nm)-len(extMeta):]
 			if ext == extMeta {
-				jsonFiles = append(jsonFiles, f)
+				if len(onlyRunThisTest) == 0 || f.Name() == onlyRunThisTest {
+					jsonFiles = append(jsonFiles, f)
+				}
 			}
 		}
 	}
@@ -106,6 +113,9 @@ metaParseLoop:
 		}
 
 		itest := IntegTest{}
+		if m.Epsilon <= 0 {
+			m.Epsilon = epsilon
+		}
 		itest.Manifest = m
 		itest.Root = jsonFile.Name()[:len(jsonFile.Name())-len(extMeta)]
 		itest.MetaFilename = jsonFile.Name()
@@ -283,7 +293,7 @@ csvLoop:
 				}
 			}
 
-			testPasses := areEqual(csvVal, xlsxVal)
+			testPasses := areEqual(csvVal, xlsxVal, test)
 
 			if !testPasses {
 				// bizarre leading junk seems to be added at the start of a file exported with microsoft excel
@@ -292,7 +302,15 @@ csvLoop:
 					xlsxRunes := []rune(xlsxVal)
 
 					if len(csvRunes) == len(xlsxRunes)+1 {
-						testPasses = areEqual(xlsxVal, string(csvRunes[1:]))
+						testPasses = areEqual(xlsxVal, string(csvRunes[1:]), test)
+					}
+				} else if len(xlsxVal) == len(csvVal)+1 {
+					// i'm also seeing that a trailing space is lost in the csv, so if the xlsx string has a trailing
+					// space, it looks like we can expect the csv string to be missing that space
+					xlsxRunes := []rune(xlsxVal)
+					if len(xlsxRunes) > 0 && xlsxRunes[len(xlsxRunes)-1] == ' ' {
+						csvRunes := []rune(csvVal)
+						testPasses = areEqual(string(xlsxRunes[:len(xlsxRunes)-1]), string(csvRunes), test)
 					}
 				}
 			}
@@ -310,7 +328,7 @@ csvLoop:
 	}
 }
 
-func areEqual(want, got string) (equal bool) {
+func areEqual(want, got string, test IntegTest) (equal bool) {
 	if want == got {
 		return true
 	}
@@ -322,7 +340,7 @@ func areEqual(want, got string) (equal bool) {
 	if csvFloatErr == nil && xlsxFloatErr == nil {
 		diff := math.Abs(csvFloat - xlsxFloat)
 
-		if diff < epsilon {
+		if diff < test.Manifest.Epsilon {
 			return true
 		}
 	}

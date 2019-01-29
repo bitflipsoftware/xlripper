@@ -13,8 +13,9 @@ import (
 	"github.com/bitflip-software/xlripper/xmlprivate"
 )
 
-var rowRoutines = runtime.NumCPU()
-var cellRoutines = runtime.NumCPU()
+var rowRoutines = maxi((runtime.NumCPU() / 2), 1)
+var cellRoutines = maxi((runtime.NumCPU() / 4), 2)
+var emptyString = ""
 
 type topInfo struct {
 	runes  []rune
@@ -146,14 +147,27 @@ func parseCell(c cellInfo) cellParseResult {
 	result.rowIX = rowIX
 	result.colIX = colIX
 
+	if result.rowIX == 0 && result.colIX == 0 {
+		use(result)
+	}
+
 	if xmlC.T == "s" {
 		// should be a shared string
 		if sharedIX, err := strconv.Atoi(xmlC.V); err == nil {
 			shStr := c.rowInfo.top.shared.get(sharedIX)
 			result.value = shStr
 		}
+	} else if xmlC.T == "inlineString" {
+		result.value = &xmlC.InlineString.Str
 	} else {
-		result.value = &xmlC.V
+		if len(xmlC.V) > 0 {
+			result.value = &xmlC.V
+		} else if len(xmlC.InlineString.Str) > 0 {
+			result.value = &xmlC.InlineString.Str
+		} else {
+			result.value = &emptyString
+		}
+
 	}
 
 	return result

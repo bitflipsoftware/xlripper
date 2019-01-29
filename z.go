@@ -349,61 +349,87 @@ func zparseSharedStrings(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 		bufString bytes.Buffer
 	}
 
-	state := stateST{}
-	l := len(runesxml)
+	//state := stateST{}
+	e := len(runesxml) - 1
 	i := 0
 
 outerloop:
-	for i = 0; i < l; i++ {
-		r := runesxml[i]
+	for i = 0; i <= e; i++ {
+		//r := runesxml[i]
 
-		if r == '<' {
-			if state.inT {
-				// get the string and put it into the shared strings
-				shs := newSharedString()
-				*shs.s = html.UnescapeString(state.bufString.String())
-				zi.sharedStrings.add(shs)
-				state.inSI = false
-				state.inT = false
-				state.bufString.Reset()
-			} else if state.inSI {
-				// check if we are getting a <t>
-				if string(runesxml[i:mini(i+2, l)]) == "<t" {
-					for ; i < l && runesxml[i] != '>'; i++ {
-						// just advance the position
-					}
-					if runesxml[i] == '>' {
-						state.inT = true
-						continue outerloop
-					}
-				}
-			} else {
-				// check if we are getting a <si>
-				peek := string(runesxml[i:mini(i+3, l)])
-				if peek == "<si" {
-					for ; i < l && runesxml[i] != '>'; i++ {
-						// just advance the position
-					}
-					if runesxml[i] == '>' {
-						state.inSI = true
-						continue outerloop
-					}
-				}
-			}
-		} else if state.inT {
-			state.bufString.WriteRune(r)
+		ssiOpenLoc, isSsiSelfClosing := shFindFirstOccurenceOfElement(runesxml, i, e, "t")
+
+		if isSsiSelfClosing {
+			i = ssiOpenLoc.last
+			continue outerloop
+		} else if ssiOpenLoc == badPair {
+			//return zi, fmt.Errorf("open search: bad indices were found inspecting from index %d", i)
+			//i = ssiOpenLoc.last
+			continue outerloop
 		}
+
+		ssiCloseLoc, isSsiCloseSelfClosing := shTagCloseFind(runesxml, ssiOpenLoc.last+1, e, "t")
+
+		if isSsiCloseSelfClosing {
+			return zi, fmt.Errorf("nonsense self-closing bool, probably a bug, less likely bad xml")
+		} else if ssiCloseLoc == badPair {
+			return zi, fmt.Errorf("close search: bad indices were found inspecting from index %d", i)
+		}
+
+		contentRunes := runesxml[ssiOpenLoc.last+1 : ssiCloseLoc.first]
+		contentStr := html.UnescapeString(string(contentRunes))
+		ssh := sharedString{}
+		ssh.s = &contentStr
+		zi.sharedStrings.add(ssh)
+		i = ssiCloseLoc.last
+
+		//if r == '<' {
+		//	if state.inT {
+		//		// get the string and put it into the shared strings
+		//		shs := newSharedString()
+		//		*shs.s = html.UnescapeString(state.bufString.String())
+		//		zi.sharedStrings.add(shs)
+		//		state.inSI = false
+		//		state.inT = false
+		//		state.bufString.Reset()
+		//	} else if state.inSI {
+		//		// check if we are getting a <t>
+		//		if string(runesxml[i:mini(i+2, e)]) == "<t" {
+		//			for ; i < e && runesxml[i] != '>'; i++ {
+		//				// just advance the position
+		//			}
+		//			if runesxml[i] == '>' {
+		//				state.inT = true
+		//				continue outerloop
+		//			}
+		//		}
+		//	} else {
+		//		// check if we are getting a <si>
+		//		peek := string(runesxml[i:mini(i+3, e)])
+		//		if peek == "<si" {
+		//			for ; i < e && runesxml[i] != '>'; i++ {
+		//				// just advance the position
+		//			}
+		//			if runesxml[i] == '>' {
+		//				state.inSI = true
+		//				continue outerloop
+		//			}
+		//		}
+		//	}
+		//} else if state.inT {
+		//	state.bufString.WriteRune(r)
+		//}
 	}
 
-	if state.inT {
-		// get the string and put it into the shared strings
-		shs := newSharedString()
-		*shs.s = html.UnescapeString(state.bufString.String())
-		zi.sharedStrings.add(shs)
-		state.inSI = false
-		state.inT = false
-		state.bufString.Reset()
-	}
+	//if state.inT {
+	//	// get the string and put it into the shared strings
+	//	shs := newSharedString()
+	//	*shs.s = html.UnescapeString(state.bufString.String())
+	//	zi.sharedStrings.add(shs)
+	//	state.inSI = false
+	//	state.inT = false
+	//	state.bufString.Reset()
+	//}
 
 	return zi, nil
 }

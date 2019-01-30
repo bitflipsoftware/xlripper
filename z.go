@@ -382,54 +382,7 @@ outerloop:
 		ssh.s = &contentStr
 		zi.sharedStrings.add(ssh)
 		i = ssiCloseLoc.last
-
-		//if r == '<' {
-		//	if state.inT {
-		//		// get the string and put it into the shared strings
-		//		shs := newSharedString()
-		//		*shs.s = html.UnescapeString(state.bufString.String())
-		//		zi.sharedStrings.add(shs)
-		//		state.inSI = false
-		//		state.inT = false
-		//		state.bufString.Reset()
-		//	} else if state.inSI {
-		//		// check if we are getting a <t>
-		//		if string(runesxml[i:mini(i+2, e)]) == "<t" {
-		//			for ; i < e && runesxml[i] != '>'; i++ {
-		//				// just advance the position
-		//			}
-		//			if runesxml[i] == '>' {
-		//				state.inT = true
-		//				continue outerloop
-		//			}
-		//		}
-		//	} else {
-		//		// check if we are getting a <si>
-		//		peek := string(runesxml[i:mini(i+3, e)])
-		//		if peek == "<si" {
-		//			for ; i < e && runesxml[i] != '>'; i++ {
-		//				// just advance the position
-		//			}
-		//			if runesxml[i] == '>' {
-		//				state.inSI = true
-		//				continue outerloop
-		//			}
-		//		}
-		//	}
-		//} else if state.inT {
-		//	state.bufString.WriteRune(r)
-		//}
 	}
-
-	//if state.inT {
-	//	// get the string and put it into the shared strings
-	//	shs := newSharedString()
-	//	*shs.s = html.UnescapeString(state.bufString.String())
-	//	zi.sharedStrings.add(shs)
-	//	state.inSI = false
-	//	state.inT = false
-	//	state.bufString.Reset()
-	//}
 
 	return zi, nil
 }

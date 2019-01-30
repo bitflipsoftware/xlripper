@@ -147,10 +147,6 @@ func parseCell(c cellInfo) cellParseResult {
 	result.rowIX = rowIX
 	result.colIX = colIX
 
-	if result.rowIX == 0 && result.colIX == 0 {
-		use(result)
-	}
-
 	if xmlC.T == "s" {
 		// should be a shared string
 		if sharedIX, err := strconv.Atoi(xmlC.V); err == nil {

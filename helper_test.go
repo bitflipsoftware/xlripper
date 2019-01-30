@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"testing"
 )
 
@@ -83,48 +82,13 @@ func itos(in int) string {
 }
 
 // TODO - delete this
-func XNothing(t *testing.T) {
+func TestNothing(t *testing.T) {
 	file, err := os.Open("/Users/mjb/Desktop/qlikview-raw/xl/worksheets/sheet1.xml")
 	if err != nil {
 		panic(err)
 	}
 	defer file.Close()
-
-	buf := bytes.Buffer{}
-	wr := bufio.NewWriter(&buf)
-	io.Copy(wr, file)
-	str := string(buf.Bytes())
-	//str = strings.Replace(str, "><", ">\n<", -1)
-	use(str)
-
-	//<t>Originating Customer</t>
-	//<t>Destination NPA-NXX</t>
-	//<t>Jurisdiction State</t>
-	//<t>Day (MM/DD/YY (day))</t>
-	//<t>Variable Cost</t>
-	//<t>Orig Per Minute Revenue</t>
-	//<t>Total Minutes</t>
-	//<t>Variable Margin</t>
-	//<t>Peerless Network Inc</t>
-	//<t>Intra-State</t>
-	//<t>Inter-State</t>
-	//<t>Unidentified</t>
-	str = strings.Replace(str, "Originating Customer", "Purple Dragons", -1)
-	str = strings.Replace(str, "Destination NPA-NXX", "Count of Headaches", -1)
-	str = strings.Replace(str, "Jurisdiction State", "Type of Food", -1)
-	//str = strings.Replace(str, "Day (MM/DD/YY (day))", "", -1)
-	str = strings.Replace(str, "Variable Cost", "Weight of Balloons", -1)
-	str = strings.Replace(str, "Orig Per Minute Revenue", "Breakfast Cost", -1)
-	str = strings.Replace(str, "Total Minutes", "Number of Hotdogs", -1)
-	str = strings.Replace(str, "Peerless Network Inc", "Everyman", -1)
-	str = strings.Replace(str, "Intra-State", "Eggs", -1)
-	str = strings.Replace(str, "Inter-State", "Kale", -1)
-	str = strings.Replace(str, "Unidentified", "Hamburger", -1)
-	str = strings.Replace(str, "", "", -1)
-	str = strings.Replace(str, "", "", -1)
-	str = strings.Replace(str, "", "", -1)
-
 	f, _ := os.Create("/Users/mjb/Desktop/q.xml")
-	f.Write([]byte(str))
+	f.Write([]byte("hi"))
 	defer f.Close()
 }

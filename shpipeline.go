@@ -2,9 +2,12 @@ package xlripper
 
 import (
 	"bytes"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"math"
+	"math/rand"
+	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -132,6 +135,37 @@ func parseCell(c cellInfo) cellParseResult {
 	str := string(c.rowInfo.top.runes[c.cellLoc.open.first : c.cellLoc.close.last+1])
 	xmlC := xmlprivate.C{}
 	err := xml.Unmarshal([]byte(str), &xmlC)
+	js, _ := json.Marshal(xmlC)
+
+	if rand.Float64() < 0.00001 {
+		f, err := os.OpenFile("/Users/mjb/Desktop/c_test.go", os.O_APPEND|os.O_WRONLY, 0600)
+		if err != nil {
+			panic(err)
+		}
+
+		strBld := bytes.Buffer{}
+		strBld.WriteRune('{')
+		strBld.WriteRune('`')
+		strBld.WriteString(str)
+		strBld.WriteRune('`')
+		strBld.WriteRune(',')
+		strBld.WriteRune('`')
+		strBld.Write(js)
+		strBld.WriteRune('`')
+		strBld.WriteRune(',')
+		strBld.WriteRune('}')
+		strBld.WriteRune(',')
+		strBld.WriteString("\n")
+
+		defer f.Close()
+
+		if _, err = f.WriteString(strBld.String()); err != nil {
+			panic(err)
+		}
+
+		use(f)
+
+	}
 
 	if err != nil {
 		// TODO - introduce pipeline cancellation on err

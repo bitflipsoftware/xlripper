@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestZBad(t *testing.T) {
+func TestUnitZBad(t *testing.T) {
 	tn := "TestZBad"
 	raw := "this is not a valid zip file"
 	_, err := zopen(raw)
@@ -17,7 +17,7 @@ func TestZBad(t *testing.T) {
 	}
 }
 
-func TestZ(t *testing.T) {
+func TestUnitZ(t *testing.T) {
 	tn := "TestZ"
 	raw := topen(Mac1621)
 	z, err := zopen(raw)

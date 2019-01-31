@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"testing"
 )
 
 const (
@@ -82,13 +81,13 @@ func itos(in int) string {
 }
 
 // TODO - delete this
-func TestNothing(t *testing.T) {
-	file, err := os.Open("/Users/mjb/Desktop/qlikview-raw/xl/worksheets/sheet1.xml")
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
-	f, _ := os.Create("/Users/mjb/Desktop/q.xml")
-	f.Write([]byte("hi"))
-	defer f.Close()
-}
+//func TestUnitNothing(t *testing.T) {
+//	file, err := os.Open("/Users/mjb/Desktop/qlikview-raw/xl/worksheets/sheet1.xml")
+//	if err != nil {
+//		panic(err)
+//	}
+//	defer file.Close()
+//	f, _ := os.Create("/Users/mjb/Desktop/q.xml")
+//	f.Write([]byte("hi"))
+//	defer f.Close()
+//}

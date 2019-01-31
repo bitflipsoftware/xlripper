@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestParseRowIndexCellIndex(t *testing.T) {
+func TestUnitParseRowIndexCellIndex(t *testing.T) {
 	tn := "TestParseRowIndexCellIndex"
 	type inp struct {
 		str   string
@@ -53,7 +53,7 @@ func doRowIndexCellIndexTest(t *testing.T, input string, expectedRowIX, expected
 	}
 }
 
-func TestParseRowLettersToNum(t *testing.T) {
+func TestUnitParseRowLettersToNum(t *testing.T) {
 	tn := "TestParseRowLettersToNum"
 	type inp struct {
 		str      string

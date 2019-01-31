@@ -12,16 +12,16 @@ type strPair struct {
 	b string
 }
 
-func TestXMLC(t *testing.T) {
+func TestUnitCellXML(t *testing.T) {
 	for ix, pair := range pairs {
-		got, err := xmlprivate.ParseXMLC(pair.a)
+		got, err := xmlprivate.ParseCellXML(pair.a)
 
 		if err != nil {
 			t.Errorf("test index %d: error parsing the 'want' value from json: %s", ix, err.Error())
 			continue
 		}
 
-		want := xmlprivate.C{}
+		want := xmlprivate.CellXML{}
 		err = json.Unmarshal([]byte(pair.b), &want)
 
 		if err != nil {
@@ -32,9 +32,103 @@ func TestXMLC(t *testing.T) {
 		gotJS, _ := json.Marshal(got)
 		wantJS, _ := json.Marshal(want)
 		if got != want {
-			t.Error(tfail(t.Name(), "got, err := xmlprivate.ParseXMLC(pair.a)", string(gotJS), string(wantJS)))
+			t.Error(tfail(t.Name(), "got, err := xmlprivate.ParseCellXML(pair.a)", string(gotJS), string(wantJS)))
+		}
+	}
+}
+
+func TestUnitCellCoreXML(t *testing.T) {
+	for ix, pair := range pairs {
+		want, err := xmlprivate.ParseCellXML(pair.a)
+
+		if err != nil {
+			t.Errorf("test index %d: error parsing the 'want' value from json: %s", ix, err.Error())
+			continue
 		}
 
+		ccxFromJSON := cellCoreXML{}
+		err = ccxFromJSON.UnmarshalJSON([]byte(pair.b))
+
+		if err != nil {
+			t.Errorf("test index %d: error during cellCoreXML.UnmarshalJSON: %s", ix, err.Error())
+			continue
+		}
+
+		ccxFromXML := cellCoreXML{}
+		err = ccxFromXML.parseXML([]rune(pair.a))
+
+		if err != nil {
+			t.Errorf("test index %d: error during cellCoreXML.parseXML: %s", ix, err.Error())
+			continue
+		}
+
+		got := ccxFromJSON.x
+		gotJS, _ := json.Marshal(got)
+		wantJS, _ := json.Marshal(want)
+
+		if want != want {
+			t.Error(tfail(t.Name(), "want, err := xmlprivate.ParseCellXML(pair.a)", string(gotJS), string(wantJS)))
+		}
+
+		got = ccxFromXML.x
+		gotJS, _ = json.Marshal(got)
+		wantJS, _ = json.Marshal(want)
+
+		if want != want {
+			t.Error(tfail(t.Name(), "want, err := xmlprivate.ParseCellXML(pair.a)", string(gotJS), string(wantJS)))
+		}
+
+		stmt := "ccxFromXML.value()"
+		gotS := ccxFromXML.value()
+		wantS := ""
+
+		if want.T == "inlineStr" {
+			wantS = want.InlineString.Str
+		} else {
+			wantS = want.V
+		}
+
+		if *gotS != wantS {
+			t.Error(tfail(t.Name(), stmt, *gotS, wantS))
+		}
+
+		stmt = "ccxFromXML.valueRunes()"
+		gotR := ccxFromXML.valueRunes()
+		wantR := []rune("")
+
+		if want.T == "inlineStr" {
+			wantS = want.InlineString.Str
+		} else {
+			wantS = want.V
+		}
+
+		if *gotS != wantS {
+			t.Error(tfail(t.Name(), stmt, string(gotR), string(wantR)))
+		}
+
+		stmt = "ccxFromXML.cellReference()"
+		*gotS = ccxFromXML.cellReference()
+		wantS = want.R
+
+		if *gotS != wantS {
+			t.Error(tfail(t.Name(), stmt, *gotS, wantS))
+		}
+
+		stmt = "ccxFromXML.cellReferenceRunes()"
+		gotR = ccxFromXML.cellReferenceRunes()
+		wantR = []rune("")
+
+		if *gotS != wantS {
+			t.Error(tfail(t.Name(), stmt, string(gotR), string(wantR)))
+		}
+
+		stmt = "ccxFromXML.typeInfo()"
+		*gotS = ccxFromXML.typeInfo().String()
+		wantS = want.T
+
+		if *gotS != wantS {
+			t.Error(tfail(t.Name(), stmt, *gotS, wantS))
+		}
 	}
 }
 

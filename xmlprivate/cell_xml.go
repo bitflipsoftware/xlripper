@@ -4,7 +4,7 @@ import (
 	"encoding/xml"
 )
 
-type C struct {
+type CellXML struct {
 	xml          xml.Name     `xml:"c" json:"xml_info"`
 	R            string       `xml:"r,attr" json:"ref"`
 	T            string       `xml:"t,attr" json:"type"`
@@ -19,8 +19,8 @@ type InlineString struct {
 	Str string   `xml:"t" json:"string_value"`
 }
 
-func ParseXMLC(s string) (C, error) {
-	xmlC := C{}
+func ParseCellXML(s string) (CellXML, error) {
+	xmlC := CellXML{}
 	err := xml.Unmarshal([]byte(s), &xmlC)
 	return xmlC, err
 }

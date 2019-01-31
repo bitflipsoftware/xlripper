@@ -2,18 +2,12 @@ package xlripper
 
 import (
 	"bytes"
-	"encoding/json"
-	"encoding/xml"
 	"fmt"
 	"math"
-	"math/rand"
-	"os"
 	"runtime"
 	"strconv"
 	"strings"
 	"sync"
-
-	"github.com/bitflip-software/xlripper/xmlprivate"
 )
 
 var rowRoutines = maxi((runtime.NumCPU() / 2), 1)
@@ -132,40 +126,42 @@ func parseCellAsync(c cellInfo, ch cellChan, wg *sync.WaitGroup) {
 }
 
 func parseCell(c cellInfo) cellParseResult {
-	str := string(c.rowInfo.top.runes[c.cellLoc.open.first : c.cellLoc.close.last+1])
-	xmlC := xmlprivate.C{}
-	err := xml.Unmarshal([]byte(str), &xmlC)
-	js, _ := json.Marshal(xmlC)
+	runes := c.rowInfo.top.runes[c.cellLoc.open.first : c.cellLoc.close.last+1]
+	//xmlC := xmlprivate.CellXML{}
+	core := cellCoreXML{}
+	err := core.parseXML(runes)
+	//err := xml.Unmarshal([]byte(str), &xmlC)
 
-	if rand.Float64() < 0.00001 {
-		f, err := os.OpenFile("/Users/mjb/Desktop/c_test.go", os.O_APPEND|os.O_WRONLY, 0600)
-		if err != nil {
-			panic(err)
-		}
-
-		strBld := bytes.Buffer{}
-		strBld.WriteRune('{')
-		strBld.WriteRune('`')
-		strBld.WriteString(str)
-		strBld.WriteRune('`')
-		strBld.WriteRune(',')
-		strBld.WriteRune('`')
-		strBld.Write(js)
-		strBld.WriteRune('`')
-		strBld.WriteRune(',')
-		strBld.WriteRune('}')
-		strBld.WriteRune(',')
-		strBld.WriteString("\n")
-
-		defer f.Close()
-
-		if _, err = f.WriteString(strBld.String()); err != nil {
-			panic(err)
-		}
-
-		use(f)
-
-	}
+	//if rand.Float64() < 0.00001 {
+	//	f, err := os.OpenFile("/Users/mjb/Desktop/c_test.go", os.O_APPEND|os.O_WRONLY, 0600)
+	//	if err != nil {
+	//		panic(err)
+	//	}
+	//js, _ := json.Marshal(xmlC)
+	//
+	//	strBld := bytes.Buffer{}
+	//	strBld.WriteRune('{')
+	//	strBld.WriteRune('`')
+	//	strBld.WriteString(str)
+	//	strBld.WriteRune('`')
+	//	strBld.WriteRune(',')
+	//	strBld.WriteRune('`')
+	//	strBld.Write(js)
+	//	strBld.WriteRune('`')
+	//	strBld.WriteRune(',')
+	//	strBld.WriteRune('}')
+	//	strBld.WriteRune(',')
+	//	strBld.WriteString("\n")
+	//
+	//	defer f.Close()
+	//
+	//	if _, err = f.WriteString(strBld.String()); err != nil {
+	//		panic(err)
+	//	}
+	//
+	//	use(f)
+	//
+	//}
 
 	if err != nil {
 		// TODO - introduce pipeline cancellation on err
@@ -177,28 +173,29 @@ func parseCell(c cellInfo) cellParseResult {
 	result.cellLoc = c.cellLoc
 	result.cellInfo = c
 
-	rowIX, colIX := parseRowIndexCellIndex(xmlC.R)
+	rowIX, colIX := parseRowIndexCellIndex(core.cellReference())
 	result.rowIX = rowIX
 	result.colIX = colIX
 
-	if xmlC.T == "s" {
+	if core.typeInfo() == ctSharedString {
 		// should be a shared string
-		if sharedIX, err := strconv.Atoi(xmlC.V); err == nil {
+		if sharedIX, err := strconv.Atoi(*core.value()); err == nil {
 			shStr := c.rowInfo.top.shared.get(sharedIX)
 			result.value = shStr
 		}
-	} else if xmlC.T == "inlineString" {
-		result.value = &xmlC.InlineString.Str
 	} else {
-		if len(xmlC.V) > 0 {
-			result.value = &xmlC.V
-		} else if len(xmlC.InlineString.Str) > 0 {
-			result.value = &xmlC.InlineString.Str
-		} else {
-			result.value = &emptyString
-		}
-
+		result.value = core.value()
 	}
+	//else {
+	//	if len(xmlC.V) > 0 {
+	//		result.value = &xmlC.V
+	//	} else if len(xmlC.InlineString.Str) > 0 {
+	//		result.value = &xmlC.InlineString.Str
+	//	} else {
+	//		result.value = &emptyString
+	//	}
+	//
+	//}
 
 	return result
 }

@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestShParserBasics(t *testing.T) {
+func TestUnitShParserBasics(t *testing.T) {
 	tn := "TestShParserBasics"
 	rawData := topen(Mac1621)
 	zs, err := zopen(rawData)
@@ -269,7 +269,7 @@ func TestShParserBasics(t *testing.T) {
 	}
 }
 
-func TestShParserErr(t *testing.T) {
+func TestUnitShParserErr(t *testing.T) {
 	_, err := shload(sheetMeta{})
 
 	if err == nil {
@@ -277,7 +277,7 @@ func TestShParserErr(t *testing.T) {
 	}
 }
 
-func TestShFindRow(t *testing.T) {
+func TestUnitShFindRow(t *testing.T) {
 	tn := "TestShFindRow"
 	rawData := topen(Mac1621)
 	zs, err := zopen(rawData)
@@ -358,7 +358,7 @@ func TestShFindRow(t *testing.T) {
 	}
 }
 
-func TestShAdvanceBad(t *testing.T) {
+func TestUnitShAdvanceBad(t *testing.T) {
 	tn := "TestShAdvanceBad"
 	runes := ""
 	start := -1
@@ -374,7 +374,7 @@ func TestShAdvanceBad(t *testing.T) {
 	}
 }
 
-func TestShAdvanceGood(t *testing.T) {
+func TestUnitShAdvanceGood(t *testing.T) {
 	tn := "TestShAdvanceGood"
 	runes := " ü Hello Günter"
 	start := 2
@@ -390,7 +390,7 @@ func TestShAdvanceGood(t *testing.T) {
 	}
 }
 
-func TestShAdvanceNotFound(t *testing.T) {
+func TestUnitShAdvanceNotFound(t *testing.T) {
 	tn := "TestShAdvanceGood"
 	runes := " ü Hello Günter"
 	start := 2
@@ -406,7 +406,7 @@ func TestShAdvanceNotFound(t *testing.T) {
 	}
 }
 
-func TestShBadA(t *testing.T) {
+func TestUnitShBadA(t *testing.T) {
 	tn := "TestShBadA"
 	ix := -1
 	runes := "abc"
@@ -421,7 +421,7 @@ func TestShBadA(t *testing.T) {
 	}
 }
 
-func TestShBadB(t *testing.T) {
+func TestUnitShBadB(t *testing.T) {
 	tn := "TestShBadB"
 	ix := 3
 	runes := "abc"
@@ -436,7 +436,7 @@ func TestShBadB(t *testing.T) {
 	}
 }
 
-func TestShBadC(t *testing.T) {
+func TestUnitShBadC(t *testing.T) {
 	tn := "TestShBadC"
 	ix := 2
 	runes := "abc"
@@ -518,7 +518,7 @@ var inputs = []input{
 	},
 }
 
-func TestShTagFind(t *testing.T) {
+func TestUnitShTagFind(t *testing.T) {
 	for ix, input := range inputs {
 		result, _, isOpenTagSelfClosing := shTagOpenFind([]rune(input.xml), input.first, input.last, input.tag)
 		expected := input.open
@@ -558,7 +558,7 @@ func TestShTagFind(t *testing.T) {
 	}
 }
 
-func TestShTagNameFind(t *testing.T) {
+func TestUnitShTagNameFind(t *testing.T) {
 	tn := "TestShTagNameFind"
 	type tagNameFindInput struct {
 		str           string
@@ -641,7 +641,7 @@ func tagFindErr(index int, want, got tagLoc, input input) string {
 	return tfail("TestShTagFind", statement, gots, wants)
 }
 
-func TestShSetLast(t *testing.T) {
+func TestUnitShSetLast(t *testing.T) {
 	tn := "TestShSetLast"
 	input := -13
 	runes := []rune("0123")
@@ -686,7 +686,7 @@ func TestShSetLast(t *testing.T) {
 }
 
 // TODO - finish writing this test
-//func TestGsheetRowClose(t *testing.T) {
+//func TestUnitGsheetRowClose(t *testing.T) {
 //	str := strRowCloseTest
 //	got, isSelfClosing := shTagCloseFind([]rune(str), 0, len(strRowCloseTest), "row")
 //	use(got)

@@ -139,7 +139,9 @@ metaParseLoop:
 	tests = gatherTests(t, tests, files, integDir)
 
 	for _, itest := range tests {
-		runIntegTest(t, itest, integDir)
+		t.Run(t.Name()+"_"+itest.Root, func(t *testing.T) {
+			runIntegTest(t, itest, integDir)
+		})
 	}
 }
 

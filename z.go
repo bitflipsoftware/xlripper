@@ -284,40 +284,92 @@ func zparseWorkbookRels(zr *zip.Reader, zi zinfo) (zout zinfo, err error) {
 	return zi, nil
 }
 
+//func zparseSharedStringGetOnePart(runes []rune, first, last int) []rune {
+//
+//}
+
+func zparseSharedStringConcat(runesxml []rune, first, last int) (string, error) {
+	str := ""
+	runeIX := first
+	e := last
+
+tLoop:
+	for ; runeIX <= e; runeIX++ {
+		//r := runesxml[runeIX]
+
+		siOpenLoc, isSiSelfClosing := shFindFirstOccurenceOfElement(runesxml, runeIX, e, "t")
+
+		if isSiSelfClosing {
+			runeIX = siOpenLoc.last
+			continue tLoop
+		} else if siOpenLoc == badPair {
+			//return zi, fmt.Errorf("open search: bad indices were found inspecting from index %d", runeIX)
+			//runeIX = siOpenLoc.last
+			continue tLoop
+		}
+
+		siCloseLoc, isSiCloseSelfClosing := shTagCloseFind(runesxml, siOpenLoc.last+1, e, "t")
+
+		if isSiCloseSelfClosing {
+			return "", fmt.Errorf("nonsense self-closing bool, probably a bug, less likely bad xml")
+		} else if siCloseLoc == badPair {
+			return "", fmt.Errorf("close search: bad indices were found inspecting from index %d", runeIX)
+		}
+
+		contentRunes := runesxml[siOpenLoc.last+1 : siCloseLoc.first]
+		contentStr := strings.Replace(html.UnescapeString(string(contentRunes)), "\r", "", -1)
+		str += contentStr
+		//contentStr := zparseSharedStringConcat(runesxml, siOpenLoc.last+1, siCloseLoc.first-1)
+		//ssh := sharedString{}
+		//ssh.s = &contentStr
+		//shstrObj.add(ssh)
+		runeIX = siCloseLoc.last
+	}
+
+	return str, nil
+}
+
 func zparseSharedStringsCore(runesxml []rune) (sharedStrings, error) {
 	shstrObj := newSharedStrings()
 	e := len(runesxml) - 1
-	i := 0
+	runeIX := 0
+	//siIX := 0
 
-outerloop:
-	for i = 0; i <= e; i++ {
-		//r := runesxml[i]
+siLoop:
+	for runeIX = 0; runeIX <= e; runeIX++ {
+		//r := runesxml[runeIX]
 
-		ssiOpenLoc, isSsiSelfClosing := shFindFirstOccurenceOfElement(runesxml, i, e, "t")
+		siOpenLoc, isSiSelfClosing := shFindFirstOccurenceOfElement(runesxml, runeIX, e, "si")
 
-		if isSsiSelfClosing {
-			i = ssiOpenLoc.last
-			continue outerloop
-		} else if ssiOpenLoc == badPair {
-			//return zi, fmt.Errorf("open search: bad indices were found inspecting from index %d", i)
-			//i = ssiOpenLoc.last
-			continue outerloop
+		if isSiSelfClosing {
+			runeIX = siOpenLoc.last
+			continue siLoop
+		} else if siOpenLoc == badPair {
+			//return zi, fmt.Errorf("open search: bad indices were found inspecting from index %d", runeIX)
+			//runeIX = siOpenLoc.last
+			continue siLoop
 		}
 
-		ssiCloseLoc, isSsiCloseSelfClosing := shTagCloseFind(runesxml, ssiOpenLoc.last+1, e, "t")
+		siCloseLoc, isSiCloseSelfClosing := shTagCloseFind(runesxml, siOpenLoc.last+1, e, "si")
 
-		if isSsiCloseSelfClosing {
+		if isSiCloseSelfClosing {
 			return shstrObj, fmt.Errorf("nonsense self-closing bool, probably a bug, less likely bad xml")
-		} else if ssiCloseLoc == badPair {
-			return shstrObj, fmt.Errorf("close search: bad indices were found inspecting from index %d", i)
+		} else if siCloseLoc == badPair {
+			return shstrObj, fmt.Errorf("close search: bad indices were found inspecting from index %d", runeIX)
 		}
 
-		contentRunes := runesxml[ssiOpenLoc.last+1 : ssiCloseLoc.first]
-		contentStr := strings.Replace(html.UnescapeString(string(contentRunes)), "\r", "", -1)
+		//contentRunes := runesxml[siOpenLoc.last+1 : siCloseLoc.first]
+		//contentStr := strings.Replace(html.UnescapeString(string(contentRunes)), "\r", "", -1)
+		contentStr, err := zparseSharedStringConcat(runesxml, siOpenLoc.last+1, siCloseLoc.first-1)
+
+		if err != nil {
+			return shstrObj, err
+		}
+
 		ssh := sharedString{}
 		ssh.s = &contentStr
 		shstrObj.add(ssh)
-		i = ssiCloseLoc.last
+		runeIX = siCloseLoc.last
 	}
 
 	return shstrObj, nil

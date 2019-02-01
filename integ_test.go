@@ -22,7 +22,7 @@ const (
 
 	// when this is specified only a test with this meta filename will run.
 	// e.g. when onlyRunthisTest = "large.meta.json" then only that test will run.
-	onlyRunThisTest = "occupation.meta.json"
+	onlyRunThisTest = ""
 )
 
 type Manifest struct {
@@ -249,6 +249,7 @@ func testSheetDataParsing(t *testing.T, testName string, sheetIndex int, parser 
 	defer ofile.Close()
 	csvReader := csv.NewReader(ofile)
 	csvReader.LazyQuotes = true
+	csvReader.TrimLeadingSpace = true
 
 	// Read reads one record (a slice of fields) from r. If the record has an unexpected number of fields, Read returns
 	// the record along with the error ErrFieldCount. Except for that case, Read always returns either a non-nil record
@@ -299,23 +300,7 @@ csvLoop:
 			testPasses := areEqual(csvVal, xlsxVal, test)
 
 			if !testPasses {
-				// bizarre leading junk seems to be added at the start of a file exported with microsoft excel
-				if rowIX == 0 && colIX == 0 {
-					csvRunes := []rune(csvVal)
-					xlsxRunes := []rune(xlsxVal)
-
-					if len(csvRunes) == len(xlsxRunes)+1 {
-						testPasses = areEqual(xlsxVal, string(csvRunes[1:]), test)
-					}
-				} else if len(xlsxVal) == len(csvVal)+1 {
-					// i'm also seeing that a trailing space is lost in the csv, so if the xlsx string has a trailing
-					// space, it looks like we can expect the csv string to be missing that space
-					xlsxRunes := []rune(xlsxVal)
-					if len(xlsxRunes) > 0 && xlsxRunes[len(xlsxRunes)-1] == ' ' {
-						csvRunes := []rune(csvVal)
-						testPasses = areEqual(string(xlsxRunes[:len(xlsxRunes)-1]), string(csvRunes), test)
-					}
-				}
+				testPasses = areEqualArduously(csvVal, xlsxVal, test)
 			}
 
 			if !testPasses {
@@ -329,6 +314,77 @@ csvLoop:
 			}
 		}
 	}
+}
+
+func areEqualWhenTrimming(a, b string, test IntegTest) (equal bool) {
+	testPasses := false
+	aRunes := []rune(a)
+	bRunes := []rune(b)
+
+	if len(aRunes) == len(bRunes) {
+		// there's nothing else to try if the rune lengths are equal
+		return false
+	}
+
+	// check for garbage space at both ends of the a
+	if len(aRunes) == len(bRunes)+2 {
+		testPasses = areEqualArduously(b, string(aRunes[1:len(aRunes)-1]), test)
+	}
+
+	if testPasses {
+		return true
+	}
+
+	// check for garbage space on the end of the a
+	if len(aRunes) == len(bRunes)+1 {
+		testPasses = areEqualArduously(b, string(aRunes[1:]), test)
+	}
+
+	if testPasses {
+		return true
+	}
+
+	// check for garbage space at the start of the a
+	if len(aRunes) == len(bRunes)+1 {
+		testPasses = areEqualArduously(b, string(aRunes[:len(aRunes)-1]), test)
+	}
+
+	if testPasses {
+		return true
+	}
+
+	return testPasses
+}
+
+func areEqualArduously(csvVal, xlsxVal string, test IntegTest) (equal bool) {
+	testPasses := areEqual(csvVal, xlsxVal, test)
+
+	if testPasses {
+		return true
+	}
+
+	testPasses = areEqualWhenTrimming(csvVal, xlsxVal, test)
+
+	if testPasses {
+		return true
+	}
+
+	testPasses = areEqualWhenTrimming(xlsxVal, csvVal, test)
+
+	if testPasses {
+		return true
+	}
+
+	// last resot
+	// if dollarsigns or commas are found, try removing them and recursively trying again
+	if strings.Index(csvVal, "$") >= 0 || strings.Index(csvVal, ",") >= 0 {
+		unformatted := strings.Replace(csvVal, "$", "", -1)
+		unformatted = strings.Replace(unformatted, ",", "", -1)
+		testPasses = areEqualArduously(unformatted, xlsxVal, test)
+		return testPasses
+	}
+
+	return testPasses
 }
 
 func areEqual(want, got string, test IntegTest) (equal bool) {

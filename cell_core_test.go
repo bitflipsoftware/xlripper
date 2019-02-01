@@ -132,6 +132,100 @@ func TestUnitCellCoreXML(t *testing.T) {
 	}
 }
 
+func TestUnitCellCoreFast(t *testing.T) {
+	for ix, pair := range pairs {
+		want, err := xmlprivate.ParseCellXML(pair.a)
+
+		if err != nil {
+			t.Errorf("test index %d: error parsing the 'want' value from json: %s", ix, err.Error())
+			continue
+		}
+
+		ccfFromJSON := cellCoreFast{}
+		err = ccfFromJSON.UnmarshalJSON([]byte(pair.b))
+
+		if err != nil {
+			t.Errorf("test index %d: error during cellCoreFast.UnmarshalJSON: %s", ix, err.Error())
+			continue
+		}
+
+		ccfFromXML := cellCoreFast{}
+		err = ccfFromXML.parseXML([]rune(pair.a))
+
+		if err != nil {
+			t.Errorf("test index %d: error during cellCoreFast.parseXML: %s", ix, err.Error())
+			continue
+		}
+
+		//got := ccfFromJSON.x
+		gotJS, _ := json.Marshal(ccfFromJSON)
+		wantJS, _ := json.Marshal(want)
+
+		if string(gotJS) != string(wantJS) {
+			t.Error(tfail(t.Name(), "want, err := cellCoreFast.MarshalJSON(pair.a)", string(gotJS), string(wantJS)))
+		}
+
+		gotJS, _ = json.Marshal(ccfFromXML)
+		wantJS, _ = json.Marshal(want)
+
+		if string(gotJS) != string(wantJS) {
+			t.Error(tfail(t.Name(), "want, err := cellCoreFast.MarshalJSON(pair.a)", string(gotJS), string(wantJS)))
+		}
+
+		stmt := "ccfFromXML.value()"
+		gotS := ccfFromXML.value()
+		wantS := ""
+
+		if want.T == "inlineStr" {
+			wantS = want.InlineString.Str
+		} else {
+			wantS = want.V
+		}
+
+		if *gotS != wantS {
+			t.Error(tfail(t.Name(), stmt, *gotS, wantS))
+		}
+
+		stmt = "ccfFromXML.valueRunes()"
+		gotR := ccfFromXML.valueRunes()
+		wantR := []rune("")
+
+		if want.T == "inlineStr" {
+			wantS = want.InlineString.Str
+		} else {
+			wantS = want.V
+		}
+
+		if *gotS != wantS {
+			t.Error(tfail(t.Name(), stmt, string(gotR), string(wantR)))
+		}
+
+		stmt = "ccfFromXML.cellReference()"
+		*gotS = ccfFromXML.cellReference()
+		wantS = want.R
+
+		if *gotS != wantS {
+			t.Error(tfail(t.Name(), stmt, *gotS, wantS))
+		}
+
+		stmt = "ccfFromXML.cellReferenceRunes()"
+		gotR = ccfFromXML.cellReferenceRunes()
+		wantR = []rune("")
+
+		if *gotS != wantS {
+			t.Error(tfail(t.Name(), stmt, string(gotR), string(wantR)))
+		}
+
+		stmt = "ccfFromXML.typeInfo()"
+		*gotS = ccfFromXML.typeInfo().String()
+		wantS = want.T
+
+		if *gotS != wantS {
+			t.Error(tfail(t.Name(), stmt, *gotS, wantS))
+		}
+	}
+}
+
 var pairs = []strPair{
 	{`<x:c r="AC182" s="0"><x:v>0.00082725</x:v></x:c>`, `{"ref":"AC182","type":"","value":"0.00082725","inline_string":{"string_value":""}}`},
 	{`<x:c r="P10271" s="0" t="s"><x:v>69</x:v></x:c>`, `{"ref":"P10271","type":"s","value":"69","inline_string":{"string_value":""}}`},

@@ -45,7 +45,7 @@ func (c *cellCoreXML) valueRunes() []rune {
 	return []rune(*c.value())
 }
 
-func (c *cellCoreXML) MarshalJSON() ([]byte, error) {
+func (c cellCoreXML) MarshalJSON() ([]byte, error) {
 	return json.Marshal(c.x)
 
 }

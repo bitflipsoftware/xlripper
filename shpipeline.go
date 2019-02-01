@@ -12,7 +12,6 @@ import (
 
 var rowRoutines = maxi((runtime.NumCPU() / 2), 1)
 var cellRoutines = maxi((runtime.NumCPU() / 4), 2)
-var emptyString = ""
 
 type topInfo struct {
 	runes  []rune

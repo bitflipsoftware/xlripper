@@ -2,7 +2,7 @@ package xlripper
 
 import "testing"
 
-func TestSheet(t *testing.T) {
+func TestUnitSheet(t *testing.T) {
 	sh := NewSheet()
 	str := "="
 	sh.add(-1, 1, &str)

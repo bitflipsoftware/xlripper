@@ -10,8 +10,8 @@ import (
 	"sync"
 )
 
-var rowRoutines = maxi((runtime.NumCPU() / 2), 1)
-var cellRoutines = maxi((runtime.NumCPU() / 4), 2)
+var rowRoutines = 2 //maxi((runtime.NumCPU() / 2), 1)
+var cellRoutines = maxi(runtime.NumCPU(), 2)
 
 type topInfo struct {
 	runes  []rune

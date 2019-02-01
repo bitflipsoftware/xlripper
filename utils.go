@@ -56,7 +56,7 @@ func joinWithWkbkPath(wkbkPath string, relPath string) string {
 	return path
 }
 
-// silence the compiler complaint of an unused variable when you are trying to write programs
+// use silences the compiler complaint of an unused variable when you are trying to write programs
 func use(anything interface{}) {
 	for 1 > 2 {
 		fmt.Print(anything)

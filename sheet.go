@@ -4,6 +4,7 @@ type Sheet struct {
 	Name    string
 	Index   int
 	Columns []Column
+	strs    map[string]*string
 }
 
 func NewSheet() Sheet {
@@ -11,6 +12,7 @@ func NewSheet() Sheet {
 		Name:    "",
 		Index:   -1,
 		Columns: make([]Column, 0),
+		strs:    make(map[string]*string, 100000),
 	}
 }
 
@@ -32,6 +34,14 @@ func (s *Sheet) add(rowIX, colIX int, val *string) {
 
 	for i := len(col.Cells); i <= rowIX; i++ {
 		col.Cells = append(col.Cells, nil)
+	}
+
+	if val != nil {
+		if _, ok := s.strs[*val]; !ok {
+			s.strs[*val] = val
+		}
+
+		val = s.strs[*val]
 	}
 
 	col.Cells[rowIX] = val

@@ -2,6 +2,7 @@ package xlripper
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -520,4 +521,138 @@ func shTagNameFind(runes []rune, first, last int) (elem string, lastPos int, isS
 	}
 
 	return "", -1, false
+}
+
+type attribute struct {
+	name  indexPair
+	value indexPair
+}
+
+var badAttribute = attribute{
+	name:  badPair,
+	value: badPair,
+}
+
+// first should be pointing at the first rune inside of that tag that you want to scan, *after* the element name.
+// it may point at the first space after the element name or to the beginning of the name first attribute that you want
+// to scan
+func shFindAttributes(runes []rune, first, last int) ([]attribute, error) {
+	//debug := shdebug(runes, 0, 100)
+	//use(debug)
+	attributes := make([]attribute, 0, 3)
+
+	ix := shSetFirst(runes, first)
+	e := shSetLast(runes, last)
+
+	for ix <= e {
+		a, err := shFindOneAttribute(runes, ix, e)
+
+		if err != nil {
+			return attributes, err
+		} else if a == badAttribute {
+			return attributes, nil
+		}
+
+		attributes = append(attributes, a)
+		ix = a.value.last + 2 // go past the closing "
+	}
+
+	return attributes, nil
+}
+
+func shFindOneAttribute(runes []rune, first, last int) (attribute, error) {
+	//debug := shdebug(runes, 0, 100)
+	//use(debug)
+
+	ix := shSetFirst(runes, first)
+	e := shSetLast(runes, last)
+
+	if ix > e {
+		return badAttribute, nil
+	}
+
+	for ix <= e && unicode.IsSpace(runes[ix]) {
+		ix++
+	}
+
+	nameFirst := ix
+	namespaceColon := shFindNamespaceColon(runes, ix, e)
+
+	if ix > e {
+		return badAttribute, nil
+	}
+
+	if namespaceColon > 0 {
+		nameFirst = namespaceColon + 1
+	}
+
+	use(nameFirst)
+
+	for ix <= e && runes[ix] != '=' && runes[ix] != '>' && runes[ix] != '/' && runes[ix] != ' ' {
+		ix++
+	}
+
+	nameLast := ix - 1
+	use(nameLast)
+
+	if runes[ix] == '>' || runes[ix] == '/' {
+		return badAttribute, nil
+	} else if runes[ix] != '=' {
+		for ix <= e && runes[ix] != '=' && runes[ix] != '>' && runes[ix] != '/' {
+			ix++
+		}
+		if runes[ix] == '>' || runes[ix] == '/' {
+			return badAttribute, nil
+		}
+	}
+
+	if runes[ix] != '=' {
+		return badAttribute, errors.New("I think we have messed up here")
+	}
+
+	for ix <= e && runes[ix] != '"' && runes[ix] != '>' && runes[ix] != '/' {
+		ix++
+	}
+
+	if runes[ix] == '>' || runes[ix] == '/' {
+		return badAttribute, nil
+	} else if runes[ix] != '"' {
+		return badAttribute, errors.New("I think we have messed up here")
+	}
+
+	ix++
+	// now we are at the value
+	valueFirst := ix
+
+	for ix <= e && runes[ix] != '"' && runes[ix] != '>' && runes[ix] != '/' {
+		ix++
+	}
+
+	if runes[ix] == '>' || runes[ix] == '/' {
+		return badAttribute, nil
+	} else if runes[ix] != '"' {
+		return badAttribute, errors.New("I think we have messed up here")
+	}
+
+	valueLast := ix - 1
+
+	if nameFirst > nameLast {
+		return badAttribute, errors.New("bug: nameFirst >= nameLast")
+	} else if nameFirst > e || nameLast > e {
+		return badAttribute, errors.New("bug: nameFirst > e || nameLast > e")
+	} else if nameLast >= valueFirst {
+		return badAttribute, errors.New("bug: nameLast >= valueFirst")
+	} else if valueFirst > valueLast { // an empty string is ok
+		valueFirst = -1
+		valueLast = -1
+	} else if valueLast > e {
+		return badAttribute, errors.New("bug: valueLast > e")
+	}
+
+	a := attribute{
+		indexPair{nameFirst, nameLast},
+		indexPair{valueFirst, valueLast},
+	}
+
+	return a, nil
 }

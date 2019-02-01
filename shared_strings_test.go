@@ -2,7 +2,7 @@ package xlripper
 
 import "testing"
 
-func TestSharedStringsBlank(t *testing.T) {
+func TestUnitSharedStringsBlank(t *testing.T) {
 	shStrings := newSharedStrings()
 	shString := newSharedString()
 	str := "hi"
@@ -22,7 +22,7 @@ func TestSharedStringsBlank(t *testing.T) {
 	}
 }
 
-func TestSharedStringsNeg(t *testing.T) {
+func TestUnitSharedStringsNeg(t *testing.T) {
 	shStrings := newSharedStrings()
 	shString := newSharedString()
 	str := "hi"

@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestMini(t *testing.T) {
+func TestUnitMini(t *testing.T) {
 	tn := "TestMini"
 	a := -1
 	b := 2
@@ -30,7 +30,7 @@ func TestMini(t *testing.T) {
 	}
 }
 
-func TestMaxi(t *testing.T) {
+func TestUnitMaxi(t *testing.T) {
 	tn := "TestMaxi"
 	a := -1
 	b := 2
@@ -55,7 +55,7 @@ func TestMaxi(t *testing.T) {
 	}
 }
 
-func TestRemoveLeadingSlashZeroLen(t *testing.T) {
+func TestUnitRemoveLeadingSlashZeroLen(t *testing.T) {
 	tn := "TestRemoveLeadingSlashZeroLen"
 	input := ""
 	want := ""
@@ -67,7 +67,7 @@ func TestRemoveLeadingSlashZeroLen(t *testing.T) {
 	}
 }
 
-func TestRemoveLeadingSlashOnlySlash(t *testing.T) {
+func TestUnitRemoveLeadingSlashOnlySlash(t *testing.T) {
 	tn := "TestRemoveLeadingSlashZeroLen"
 	input := "/"
 	want := ""
@@ -79,7 +79,7 @@ func TestRemoveLeadingSlashOnlySlash(t *testing.T) {
 	}
 }
 
-func TestRemoveLeadingSlashOneChar(t *testing.T) {
+func TestUnitRemoveLeadingSlashOneChar(t *testing.T) {
 	tn := "TestRemoveLeadingSlashZeroLen"
 	input := "x"
 	want := "x"
@@ -91,7 +91,7 @@ func TestRemoveLeadingSlashOneChar(t *testing.T) {
 	}
 }
 
-func TestRemoveLeadingSlashRemove(t *testing.T) {
+func TestUnitRemoveLeadingSlashRemove(t *testing.T) {
 	tn := "TestRemoveLeadingSlashZeroLen"
 	input := "/x"
 	want := "x"
@@ -103,7 +103,7 @@ func TestRemoveLeadingSlashRemove(t *testing.T) {
 	}
 }
 
-func TestUseFunction(t *testing.T) {
+func TestUnitUseFunction(t *testing.T) {
 	x := 1
 	use(x)
 }

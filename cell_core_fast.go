@@ -11,7 +11,7 @@ import (
 
 type cellCoreFast struct {
 	r   []rune
-	t   celLTypeInfo
+	t   cellTypeInfo
 	ref indexPair
 	val indexPair
 }
@@ -32,7 +32,7 @@ func (c *cellCoreFast) cellReferenceRunes() []rune {
 	return c.r[c.ref.first : c.ref.last+1]
 }
 
-func (c *cellCoreFast) typeInfo() celLTypeInfo {
+func (c *cellCoreFast) typeInfo() cellTypeInfo {
 	return c.t
 }
 
@@ -73,6 +73,7 @@ func (c *cellCoreFast) UnmarshalJSON(b []byte) error {
 func (c *cellCoreFast) parseXML(runes []rune) error {
 	debug := shdebug(runes, 0, 1000)
 	use(debug)
+	c.r = runes
 
 	ix := 0
 	e := len(runes) - 1
@@ -120,8 +121,42 @@ func (c *cellCoreFast) parseXML(runes []rune) error {
 
 	attributes, err := shFindAttributes(runes, ix, e)
 
-	use(attributes)
-	use(err)
+	if err != nil {
+		return err
+	}
+
+	for _, a := range attributes {
+		if a == badAttribute {
+			continue
+		} else if a.name == badPair {
+			continue
+		}
+
+		name := string(runes[a.name.first : a.name.last+1])
+
+		if name == "r" {
+			if a.value != badPair && a.value.last > a.value.first {
+				c.ref = a.value
+			} else {
+				c.ref = badPair
+			}
+		} else if name == "t" {
+			val := ""
+
+			if a.value != badPair && a.value.last > a.value.first {
+				val = string(runes[a.value.first : a.value.last+1])
+			}
+
+			c.t.Parse(val)
+		} else if name == "s" {
+			// TODO - what is 's'? What does it mean/represent?
+			if a.value != badPair && a.value.last > a.value.first {
+				c.val = a.value
+			} else {
+				c.val = badPair
+			}
+		}
+	}
 
 	if false {
 		b := []byte(string(runes))

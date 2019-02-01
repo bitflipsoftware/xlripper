@@ -19,7 +19,7 @@ func (c *cellCoreXML) cellReferenceRunes() []rune {
 	return []rune(c.cellReference())
 }
 
-func (c *cellCoreXML) typeInfo() celLTypeInfo {
+func (c *cellCoreXML) typeInfo() cellTypeInfo {
 	if c.x.T == "" {
 		return ctNone
 	} else if c.x.T == "inlineStr" {

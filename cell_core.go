@@ -2,12 +2,12 @@ package xlripper
 
 import "encoding/json"
 
-type celLTypeInfo int
+type cellTypeInfo int
 
 type cellCore interface {
 	cellReference() string
 	cellReferenceRunes() []rune
-	typeInfo() celLTypeInfo
+	typeInfo() cellTypeInfo
 	value() *string
 	valueRunes() []rune
 	json.Marshaler
@@ -16,7 +16,7 @@ type cellCore interface {
 }
 
 const (
-	ctUnknown celLTypeInfo = iota
+	ctUnknown cellTypeInfo = iota
 	ctNone
 	ctSharedString
 	ctInlineString
@@ -29,7 +29,7 @@ const (
 	ctStrInlineString = "inlineStr"
 )
 
-func (c celLTypeInfo) String() string {
+func (c cellTypeInfo) String() string {
 	switch c {
 	case ctUnknown:
 		return ctStrUnkown
@@ -46,7 +46,7 @@ func (c celLTypeInfo) String() string {
 	return ctStrUnkown
 }
 
-func (c *celLTypeInfo) Parse(s string) {
+func (c *cellTypeInfo) Parse(s string) {
 	switch s {
 	case ctStrUnkown:
 		*c = ctUnknown

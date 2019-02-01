@@ -127,7 +127,7 @@ func parseCellAsync(c cellInfo, ch cellChan, wg *sync.WaitGroup) {
 func parseCell(c cellInfo) cellParseResult {
 	runes := c.rowInfo.top.runes[c.cellLoc.open.first : c.cellLoc.close.last+1]
 	//xmlC := xmlprivate.CellXML{}
-	core := cellCoreXML{}
+	core := cellCoreFast{}
 	err := core.parseXML(runes)
 	//err := xml.Unmarshal([]byte(str), &xmlC)
 

@@ -5,6 +5,7 @@ import (
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"html"
 	"unicode"
 
 	"github.com/bitflip-software/xlripper/xmlprivate"
@@ -42,7 +43,7 @@ func (c *cellCoreFast) value() *string {
 		return &emptyString
 	}
 
-	str := string(c.valueRunes())
+	str := html.UnescapeString(string(c.valueRunes()))
 	return &str
 }
 
@@ -72,8 +73,8 @@ func (c *cellCoreFast) UnmarshalJSON(b []byte) error {
 }
 
 func (c *cellCoreFast) parseXML(runes []rune) error {
-	debug := shdebug(runes, 0, 1000)
-	use(debug)
+	//debug := shdebug(runes, 0, 1000)
+	//use(debug)
 	c.r = runes
 
 	ix := 0
@@ -148,7 +149,12 @@ func (c *cellCoreFast) parseXML(runes []rune) error {
 				val = string(runes[a.value.first : a.value.last+1])
 			}
 
-			c.t.Parse(val)
+			// TODO - scary, why does a sheet use str?
+			if val == "str" {
+				c.t = ctNone
+			} else {
+				c.t.Parse(val)
+			}
 
 			if c.t == ctUnknown {
 				fmt.Printf("unknown typeInfo encountered '%s'", val)
@@ -205,7 +211,9 @@ func (c *cellCoreFast) parseXML(runes []rune) error {
 	} else {
 		vLoc, vIsSelfClosing := shFindFirstOccurenceOfElement(runes, ix, e, "v")
 		if vLoc == badPair {
-			return errors.New("could not find the 'v' element")
+			//return errors.New("could not find the 'v' element")
+			c.val = badPair
+			return nil
 		}
 
 		if !vIsSelfClosing {

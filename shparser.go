@@ -537,8 +537,8 @@ var badAttribute = attribute{
 // it may point at the first space after the element name or to the beginning of the name first attribute that you want
 // to scan
 func shFindAttributes(runes []rune, first, last int) ([]attribute, error) {
-	debug := shdebug(runes, 0, 100)
-	use(debug)
+	//debug := shdebug(runes, 0, 100)
+	//use(debug)
 	attributes := make([]attribute, 0, 3)
 
 	ix := shSetFirst(runes, first)
@@ -561,8 +561,8 @@ func shFindAttributes(runes []rune, first, last int) ([]attribute, error) {
 }
 
 func shFindOneAttribute(runes []rune, first, last int) (attribute, error) {
-	debug := shdebug(runes, 0, 100)
-	use(debug)
+	//debug := shdebug(runes, 0, 100)
+	//use(debug)
 
 	ix := shSetFirst(runes, first)
 	e := shSetLast(runes, last)

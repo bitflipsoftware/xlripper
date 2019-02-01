@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"errors"
+	"fmt"
 	"unicode"
 
 	"github.com/bitflip-software/xlripper/xmlprivate"
@@ -143,17 +144,83 @@ func (c *cellCoreFast) parseXML(runes []rune) error {
 		} else if name == "t" {
 			val := ""
 
-			if a.value != badPair && a.value.last > a.value.first {
+			if a.value != badPair && a.value.last >= a.value.first {
 				val = string(runes[a.value.first : a.value.last+1])
 			}
 
 			c.t.Parse(val)
+
+			if c.t == ctUnknown {
+				fmt.Printf("unknown typeInfo encountered '%s'", val)
+				c.t = ctNone
+			}
 		} else if name == "s" {
 			// TODO - what is 's'? What does it mean/represent?
-			if a.value != badPair && a.value.last > a.value.first {
-				c.val = a.value
+			//if a.value != badPair && a.value.last > a.value.first {
+			//	c.val = a.value
+			//} else {
+			//	c.val = badPair
+			//}
+		} else if name == "" {
+
+		}
+
+		if a.value != badPair {
+			ix = a.value.last + 2
+		} else if a.name != badPair {
+			ix = a.name.last + 1
+		}
+	}
+
+	if c.t == ctUnknown {
+		c.t = ctNone
+	}
+
+	if c.typeInfo() == ctInlineString {
+		insLoc, insIsSelfClosing := shFindFirstOccurenceOfElement(runes, ix, e, "is")
+
+		if insIsSelfClosing || insLoc == badPair {
+			return errors.New("could not find the inline string")
+		}
+
+		ix = insLoc.last + 1
+		tLoc, tIsSelfClosing := shFindFirstOccurenceOfElement(runes, ix, e, "t")
+		if tIsSelfClosing || tLoc == badPair {
+			return errors.New("could not find the inline string")
+		}
+		valFirst := tLoc.last + 1
+		tClose, _ := shTagCloseFind(runes, valFirst, e, "t")
+
+		if tClose != badPair {
+			valLast := tClose.first - 1
+
+			if valFirst <= valLast && valLast <= e {
+				c.val.first = valFirst
+				c.val.last = valLast
 			} else {
 				c.val = badPair
+			}
+		}
+
+	} else {
+		vLoc, vIsSelfClosing := shFindFirstOccurenceOfElement(runes, ix, e, "v")
+		if vLoc == badPair {
+			return errors.New("could not find the 'v' element")
+		}
+
+		if !vIsSelfClosing {
+			valFirst := vLoc.last + 1
+			vClose, _ := shTagCloseFind(runes, valFirst, e, "v")
+
+			if vClose != badPair {
+				valLast := vClose.first - 1
+
+				if valFirst <= valLast && valLast <= e {
+					c.val.first = valFirst
+					c.val.last = valLast
+				} else {
+					return errors.New("bug")
+				}
 			}
 		}
 	}

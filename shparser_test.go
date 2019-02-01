@@ -685,6 +685,76 @@ func TestUnitShSetLast(t *testing.T) {
 	}
 }
 
+func TestUnitFindAttributes(t *testing.T) {
+	str := ` r="AC182" blerp:s="0" foo:bar = "yelp" ><x:v>0.00082725</x:v></x:c>`
+	runes := []rune(str)
+	ix := 0
+	e := len(runes) - 1
+	attributes, err := shFindAttributes(runes, ix, e)
+
+	if err != nil {
+		t.Errorf("received error during shFindAttributes(runes, ix, e): %s", err.Error())
+	}
+
+	stmt := "len(attributes"
+	got := itos(len(attributes))
+	want := "3"
+
+	if got != want {
+		t.Error(tfail(t.Name(), stmt, got, want))
+		return // don't panic
+	}
+
+	aIX := 0
+	attribute := attributes[aIX]
+	stmt = "string(runes[attribute.name.first : attribute.name.last+1])"
+	got = string(runes[attribute.name.first : attribute.name.last+1])
+	want = "r"
+	if got != want {
+		t.Error(tfail(t.Name(), stmt, got, want))
+	}
+
+	stmt = "string(runes[attribute.value.first : attribute.value.last+1])"
+	got = string(runes[attribute.value.first : attribute.value.last+1])
+	want = "AC182"
+	if got != want {
+		t.Error(tfail(t.Name(), stmt, got, want))
+	}
+
+	aIX = 1
+	attribute = attributes[aIX]
+	stmt = "string(runes[attribute.name.first : attribute.name.last+1])"
+	got = string(runes[attribute.name.first : attribute.name.last+1])
+	want = "s"
+	if got != want {
+		t.Error(tfail(t.Name(), stmt, got, want))
+	}
+
+	stmt = "string(runes[attribute.value.first : attribute.value.last+1])"
+	got = string(runes[attribute.value.first : attribute.value.last+1])
+	want = "0"
+	if got != want {
+		t.Error(tfail(t.Name(), stmt, got, want))
+	}
+
+	aIX = 2
+	attribute = attributes[aIX]
+	stmt = "string(runes[attribute.name.first : attribute.name.last+1])"
+	got = string(runes[attribute.name.first : attribute.name.last+1])
+	want = "bar"
+	if got != want {
+		t.Error(tfail(t.Name(), stmt, got, want))
+	}
+
+	stmt = "string(runes[attribute.value.first : attribute.value.last+1])"
+	got = string(runes[attribute.value.first : attribute.value.last+1])
+	want = "yelp"
+	if got != want {
+		t.Error(tfail(t.Name(), stmt, got, want))
+	}
+
+}
+
 // TODO - finish writing this test
 //func TestUnitGsheetRowClose(t *testing.T) {
 //	str := strRowCloseTest

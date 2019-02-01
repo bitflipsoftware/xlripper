@@ -3,6 +3,8 @@ package xlripper
 import (
 	"encoding/json"
 	"encoding/xml"
+	"errors"
+	"unicode"
 
 	"github.com/bitflip-software/xlripper/xmlprivate"
 )
@@ -69,15 +71,69 @@ func (c *cellCoreFast) UnmarshalJSON(b []byte) error {
 }
 
 func (c *cellCoreFast) parseXML(runes []rune) error {
-	b := []byte(string(runes))
-	tempx := xmlprivate.CellXML{}
-	err := xml.Unmarshal(b, &tempx)
+	debug := shdebug(runes, 0, 1000)
+	use(debug)
 
-	if err != nil {
-		return err
+	ix := 0
+	e := len(runes) - 1
+
+	// advance to point to the first character inside the 'c' tag
+	ix++
+
+	if ix > e {
+		return errors.New("end was reached too soon")
 	}
 
-	*c = cellCoreFastFromXMLPrivate(tempx)
+	// advance past any whitespace to the first char of the element name or namespace
+	for ix <= e && unicode.IsSpace(runes[ix]) {
+		ix++
+	}
+
+	if ix > e {
+		return errors.New("end was reached too soon")
+	}
+
+	// advance past the namespace
+	namespaceColon := shFindNamespaceColon(runes, ix, e)
+	if namespaceColon > 0 {
+		ix = namespaceColon + 1
+	}
+
+	// now we should be pointing at an element name 'c'
+	if ix > e {
+		return errors.New("end was reached too soon")
+	}
+
+	if runes[ix] != 'c' {
+		return errors.New("wrong element type")
+	}
+
+	ix++
+
+	if ix > e {
+		return errors.New("end was reached too soon")
+	}
+
+	if runes[ix] != ' ' {
+		return errors.New("wrong element type")
+	}
+
+	attributes, err := shFindAttributes(runes, ix, e)
+
+	use(attributes)
+	use(err)
+
+	if false {
+		b := []byte(string(runes))
+		tempx := xmlprivate.CellXML{}
+		err := xml.Unmarshal(b, &tempx)
+
+		if err != nil {
+			return err
+		}
+
+		*c = cellCoreFastFromXMLPrivate(tempx)
+	}
 	return nil
 }
 

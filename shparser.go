@@ -2,6 +2,7 @@ package xlripper
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -520,4 +521,25 @@ func shTagNameFind(runes []rune, first, last int) (elem string, lastPos int, isS
 	}
 
 	return "", -1, false
+}
+
+type attribute struct {
+	name  indexPair
+	value indexPair
+}
+
+// first should be pointing at the first rune inside of that tag that you want to scan, *after* the element name.
+// it may point at the first space after the element name or to the beginning of the name first attribute that you want
+// to scan
+func shFindAttributes(runes []rune, first, last int) ([]attribute, error) {
+	attributes := make([]attribute, 0, 3)
+
+	ix := shSetFirst(runes, first)
+	e := shSetLast(runes, last)
+
+	if ix < e {
+		return attributes, errors.New("bad input")
+	}
+
+	return attributes, nil
 }

@@ -22,7 +22,7 @@ const (
 
 	// when this is specified only a test with this meta filename will run.
 	// e.g. when onlyRunthisTest = "large.meta.json" then only that test will run.
-	onlyRunThisTest = ""
+	onlyRunThisTest = "occupation.meta.json"
 )
 
 type Manifest struct {
@@ -248,6 +248,7 @@ func testSheetDataParsing(t *testing.T, testName string, sheetIndex int, parser 
 
 	defer ofile.Close()
 	csvReader := csv.NewReader(ofile)
+	csvReader.LazyQuotes = true
 
 	// Read reads one record (a slice of fields) from r. If the record has an unexpected number of fields, Read returns
 	// the record along with the error ErrFieldCount. Except for that case, Read always returns either a non-nil record

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"strings"
 	"unicode"
 
 	"github.com/bitflip-software/xlripper/xmlprivate"
@@ -43,7 +44,7 @@ func (c *cellCoreFast) value() *string {
 		return &emptyString
 	}
 
-	str := html.UnescapeString(string(c.valueRunes()))
+	str := strings.Replace(html.UnescapeString(string(c.valueRunes())), "\r", "", -1)
 	return &str
 }
 

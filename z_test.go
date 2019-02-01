@@ -19,7 +19,7 @@ func TestUnitZBad(t *testing.T) {
 
 func TestUnitZ(t *testing.T) {
 	tn := "TestZ"
-	raw := topen(Mac1621)
+	raw := topen(testMac1621)
 	z, err := zopen(raw)
 
 	if err != nil {
@@ -266,4 +266,24 @@ func TestUnitZ(t *testing.T) {
 		t.Error(tfail(tn, "sheet.sheetName", got, want))
 		return // we could panic if this is not right
 	}
+}
+
+func TestUnitSharedStrings(t *testing.T) {
+	xmlstr := topen(testSharedString)
+	xmlrunes := []rune(xmlstr)
+	shstrObj, err := zparseSharedStringsCore(xmlrunes)
+
+	if err != nil {
+		t.Errorf("error occured during zparseSharedStringsCore(xmlrunes): %s", err.Error())
+	}
+
+	stmt := "itos(len(shstrObj.sstrings))"
+	got := itos(len(shstrObj.sstrings))
+	want := "3745"
+
+	if got != want {
+		t.Error(tfail(t.Name(), stmt, got, want))
+	}
+
+	use(shstrObj)
 }

@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	epsilon = 0.000001
-	Mac1621 = "mac-16.21.xlsx"
+	epsilon          = 0.000001
+	testMac1621      = "mac-16.21.xlsx"
+	testSharedString = "sharedStrings.xml"
 )
 
 func topen(filename string) string {

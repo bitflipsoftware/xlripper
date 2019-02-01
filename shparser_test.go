@@ -9,7 +9,7 @@ import (
 
 func TestUnitShParserBasics(t *testing.T) {
 	tn := "TestShParserBasics"
-	rawData := topen(Mac1621)
+	rawData := topen(testMac1621)
 	zs, err := zopen(rawData)
 
 	if err != nil {
@@ -279,7 +279,7 @@ func TestUnitShParserErr(t *testing.T) {
 
 func TestUnitShFindRow(t *testing.T) {
 	tn := "TestShFindRow"
-	rawData := topen(Mac1621)
+	rawData := topen(testMac1621)
 	zs, err := zopen(rawData)
 
 	if err != nil {

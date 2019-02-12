@@ -484,7 +484,7 @@ func shTagNameFind(runes []rune, first, last int) (elem string, lastPos int, isS
 		ix = namespaceColonPos + 1
 	}
 
-	strbuf := bytes.Buffer{}
+	strbuf := bytes.NewBuffer(make([]byte, 0, 20))
 
 	for ; ix <= e && runes[ix] != ' ' && runes[ix] != '>' && runes[ix] != '=' && runes[ix] != '"' && runes[ix] != '/'; ix++ {
 		strbuf.WriteRune(runes[ix])

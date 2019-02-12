@@ -29,18 +29,19 @@ func doBench(b *testing.B, filename string) {
 	}
 
 	//fmt.Print(p.SheetNames())
-	sheet, err := p.ParseOne(0)
+	for i := 0; i < b.N; i++ {
+		sheet, err := p.ParseOne(0)
 
-	if err != nil {
-		b.Errorf("error ocurred during parsing: %s", err.Error())
-		return
+		if err != nil {
+			b.Errorf("error ocurred during parsing: %s", err.Error())
+			return
+		}
+
+		if len(sheet.Columns) == 0 {
+			b.Errorf("empty sheet")
+			return
+		}
 	}
-
-	if len(sheet.Columns) == 0 {
-		b.Errorf("empty sheet")
-		return
-	}
-
 	//for _, col := range sheet.Columns {
 	//	for _, cell := range col.Cells {
 	//		if cell == nil {

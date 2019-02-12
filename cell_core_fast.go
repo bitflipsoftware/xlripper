@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html"
 	"strings"
-	"unicode"
 
 	"github.com/bitflip-software/xlripper/xmlprivate"
 )
@@ -89,7 +88,7 @@ func (c *cellCoreFast) parseXML(runes []rune) error {
 	}
 
 	// advance past any whitespace to the first char of the element name or namespace
-	for ix <= e && runes[ix] != ' ' && runes[ix] != '\t' && runes[ix] != '\n' {
+	for ix <= e && (runes[ix] == ' ' || runes[ix] == '\t' || runes[ix] == '\n') {
 		ix++
 	}
 

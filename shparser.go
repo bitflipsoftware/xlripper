@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"sync"
-	"unicode"
 )
 
 var badPair = indexPair{-1, -1}
@@ -390,7 +389,7 @@ findLeftChevron:
 		return badPair, false
 	}
 
-	for ; ix <= e && unicode.IsSpace(runes[ix]); ix++ {
+	for ; ix <= e && (runes[ix] == ' ' || runes[ix] == '\t' || runes[ix] == '\n'); ix++ {
 		// advance past white space
 	}
 
@@ -537,9 +536,8 @@ var badAttribute = attribute{
 // it may point at the first space after the element name or to the beginning of the name first attribute that you want
 // to scan
 func shFindAttributes(runes []rune, first, last int) ([]attribute, error) {
-	//debug := shdebug(runes, 0, 100)
-	//use(debug)
-	attributes := make([]attribute, 0, 3)
+	// TODO - this function is causing excessive 'runtime newstack' in pprof go1.12
+	attributes := make([]attribute, 0, 5)
 
 	ix := shSetFirst(runes, first)
 	e := shSetLast(runes, last)
@@ -571,7 +569,7 @@ func shFindOneAttribute(runes []rune, first, last int) (attribute, error) {
 		return badAttribute, nil
 	}
 
-	for ix <= e && unicode.IsSpace(runes[ix]) {
+	for ix <= e && (runes[ix] == ' ' || runes[ix] == '\t' || runes[ix] == '\n') {
 		ix++
 	}
 

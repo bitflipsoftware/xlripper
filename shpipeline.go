@@ -1,7 +1,6 @@
 package xlripper
 
 import (
-	"bytes"
 	"fmt"
 	"math"
 	"runtime"
@@ -10,7 +9,7 @@ import (
 	"sync"
 )
 
-var rowRoutines = 2 //maxi((runtime.NumCPU() / 2), 1)
+var rowRoutines = maxi((runtime.NumCPU() / 2), 1)
 var cellRoutines = maxi(runtime.NumCPU(), 2)
 
 type topInfo struct {
@@ -200,27 +199,44 @@ func parseCell(c cellInfo) cellParseResult {
 }
 
 func parseRowIndexCellIndex(sheetCellReference string) (rowIX, colIX int) {
-	letterBuf := bytes.Buffer{}
-	numberBuf := bytes.Buffer{}
+	//letterBuf := bytes.Buffer{}
+	//numberBuf := bytes.Buffer{}
 
-	for _, r := range strings.ToUpper(sheetCellReference) {
-		if r >= 'A' && r <= 'Z' {
-			letterBuf.WriteRune(r)
-		} else if r >= '0' && r <= '9' {
-			numberBuf.WriteRune(r)
-		} else {
-			return -1, -1
+	//for _, r := range strings.ToUpper(sheetCellReference) {
+	//	if r >= 'A' && r <= 'Z' {
+	//		letterBuf.WriteRune(r)
+	//	} else if r >= '0' && r <= '9' {
+	//		numberBuf.WriteRune(r)
+	//	} else {
+	//		return -1, -1
+	//	}
+	//}
+
+	up := strings.ToUpper(sheetCellReference)
+
+	firstNum := -1
+	for ix, r := range up {
+		if r >= '0' && r <= '9' {
+			firstNum = ix
+			break
 		}
 	}
 
-	rowIX, err := strconv.Atoi(numberBuf.String())
+	if firstNum <= 0 {
+		return -1, -1
+	}
+
+	letters := up[:firstNum]
+	nums := up[firstNum:]
+
+	rowIX, err := strconv.Atoi(nums)
 	rowIX--
 
 	if err != nil {
 		return -1, -1
 	}
 
-	colIX = lettersToNum(letterBuf.String())
+	colIX = lettersToNum(letters)
 	return rowIX, colIX
 }
 

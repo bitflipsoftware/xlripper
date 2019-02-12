@@ -89,7 +89,7 @@ func (c *cellCoreFast) parseXML(runes []rune) error {
 	}
 
 	// advance past any whitespace to the first char of the element name or namespace
-	for ix <= e && unicode.IsSpace(runes[ix]) {
+	for ix <= e && runes[ix] != ' ' && runes[ix] != '\t' && runes[ix] != '\n' {
 		ix++
 	}
 

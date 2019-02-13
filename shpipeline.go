@@ -237,6 +237,11 @@ func parseRowIndexCellIndex(sheetCellReference string) (rowIX, colIX int) {
 	}
 
 	colIX = lettersToNum(letters)
+
+	if colIX < 0 {
+		return -1, -1
+	}
+
 	return rowIX, colIX
 }
 

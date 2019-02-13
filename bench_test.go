@@ -11,8 +11,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/bitflip-software/iqbid/blaze/flog"
 )
 
 func BenchmarkSmall(b *testing.B) {
@@ -101,7 +99,7 @@ func BenchmarkParseXML(b *testing.B) {
 	checkit(err)
 
 	if err != nil {
-		flog.Error(err.Error())
+		fmt.Print(err.Error())
 		os.Exit(1)
 	}
 

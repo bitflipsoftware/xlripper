@@ -2,7 +2,6 @@ package xlripper
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -226,9 +225,10 @@ func shTagCompletion(runes []rune, first, last int, elem string) (location int, 
 	r = runes[ix]
 
 	// we should be pointing at the first rune of the element name now
-	if ix > e || r == '<' || r == ':' || r == ' ' || r == '>' {
-		return -1, false
-	}
+	//eliminated for optimization
+	//if ix > e || r == '<' || r == ':' || r == ' ' || r == '>' {
+	//	return -1, false
+	//}
 
 	elemRunes := []rune(elem)
 	elemLen := len(elemRunes)
@@ -539,8 +539,12 @@ func shFindAttributes(runes []rune, first, last int) ([]attribute, error) {
 	// TODO - this function is causing excessive 'runtime newstack' in pprof go1.12
 	attributes := make([]attribute, 0, 5)
 
-	ix := shSetFirst(runes, first)
-	e := shSetLast(runes, last)
+	// inline this for optimization
+	//ix := shSetFirst(runes, first)
+	//e := shSetLast(runes, last)
+
+	ix := first // do not check it due to optimization
+	e := last   // do not check it due to optimization
 
 	for ix <= e {
 		a, err := shFindOneAttribute(runes, ix, e)
@@ -559,11 +563,12 @@ func shFindAttributes(runes []rune, first, last int) ([]attribute, error) {
 }
 
 func shFindOneAttribute(runes []rune, first, last int) (attribute, error) {
+	// Note: this is the most critical function in all profiling done so far, needs to be highly optimized
 	//debug := shdebug(runes, 0, 100)
 	//use(debug)
 
-	ix := shSetFirst(runes, first)
-	e := shSetLast(runes, last)
+	ix := first // optimized out -> shSetFirst(runes, first)
+	e := last   // optimized out -> shSetLast(runes, last)
 
 	if ix > e {
 		return badAttribute, nil
@@ -584,14 +589,11 @@ func shFindOneAttribute(runes []rune, first, last int) (attribute, error) {
 		nameFirst = namespaceColon + 1
 	}
 
-	use(nameFirst)
-
 	for ix <= e && runes[ix] != '=' && runes[ix] != '>' && runes[ix] != '/' && runes[ix] != ' ' {
 		ix++
 	}
 
 	nameLast := ix - 1
-	use(nameLast)
 
 	if runes[ix] == '>' || runes[ix] == '/' {
 		return badAttribute, nil
@@ -604,19 +606,21 @@ func shFindOneAttribute(runes []rune, first, last int) (attribute, error) {
 		}
 	}
 
-	if runes[ix] != '=' {
-		return badAttribute, errors.New("I think we have messed up here")
-	}
+	// optimized out
+	//if runes[ix] != '=' {
+	//	return badAttribute, errors.New("I think we have messed up here")
+	//}
 
 	for ix <= e && runes[ix] != '"' && runes[ix] != '>' && runes[ix] != '/' {
 		ix++
 	}
 
-	if runes[ix] == '>' || runes[ix] == '/' {
-		return badAttribute, nil
-	} else if runes[ix] != '"' {
-		return badAttribute, errors.New("I think we have messed up here")
-	}
+	// optimized out
+	//if runes[ix] == '>' || runes[ix] == '/' {
+	//	return badAttribute, nil
+	//} else if runes[ix] != '"' {
+	//	return badAttribute, errors.New("I think we have messed up here")
+	//}
 
 	ix++
 	// now we are at the value
@@ -626,26 +630,28 @@ func shFindOneAttribute(runes []rune, first, last int) (attribute, error) {
 		ix++
 	}
 
-	if runes[ix] == '>' || runes[ix] == '/' {
-		return badAttribute, nil
-	} else if runes[ix] != '"' {
-		return badAttribute, errors.New("I think we have messed up here")
-	}
+	// optimized out
+	//if runes[ix] == '>' || runes[ix] == '/' {
+	//	return badAttribute, nil
+	//} else if runes[ix] != '"' {
+	//	return badAttribute, errors.New("I think we have messed up here")
+	//}
 
 	valueLast := ix - 1
 
-	if nameFirst > nameLast {
-		return badAttribute, errors.New("bug: nameFirst >= nameLast")
-	} else if nameFirst > e || nameLast > e {
-		return badAttribute, errors.New("bug: nameFirst > e || nameLast > e")
-	} else if nameLast >= valueFirst {
-		return badAttribute, errors.New("bug: nameLast >= valueFirst")
-	} else if valueFirst > valueLast { // an empty string is ok
-		valueFirst = -1
-		valueLast = -1
-	} else if valueLast > e {
-		return badAttribute, errors.New("bug: valueLast > e")
-	}
+	// optimized out
+	//if nameFirst > nameLast {
+	//	return badAttribute, errors.New("bug: nameFirst >= nameLast")
+	//} else if nameFirst > e || nameLast > e {
+	//	return badAttribute, errors.New("bug: nameFirst > e || nameLast > e")
+	//} else if nameLast >= valueFirst {
+	//	return badAttribute, errors.New("bug: nameLast >= valueFirst")
+	//} else if valueFirst > valueLast { // an empty string is ok
+	//	valueFirst = -1
+	//	valueLast = -1
+	//} else if valueLast > e {
+	//	return badAttribute, errors.New("bug: valueLast > e")
+	//}
 
 	a := attribute{
 		indexPair{nameFirst, nameLast},

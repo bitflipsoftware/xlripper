@@ -9,8 +9,8 @@ import (
 	"sync"
 )
 
-var rowRoutines = maxi((runtime.NumCPU() / 2), 1)
-var cellRoutines = maxi(runtime.NumCPU(), 2)
+var rowRoutines = runtime.NumCPU() + 1
+var cellRoutines = maxi(runtime.NumCPU()/4, 2)
 
 type topInfo struct {
 	runes  []rune
@@ -58,7 +58,7 @@ func parseRow(r rowInfo) rowParseResult {
 	rpr.top.runes = r.top.runes
 	rpr.rowLoc = r.rowLoc
 	rpr.interationIX = r.interationIX
-	rpr.cells = make([]cellParseResult, 0)
+	rpr.cells = make([]cellParseResult, 0, 65)
 	receiveWait.Add(1)
 	go receiveCellsAsync(ch, &rpr, &receiveWait)
 
@@ -90,7 +90,7 @@ cellLoop:
 		c.cellLoc = cellLoc
 
 		sendWait.Add(1)
-		go parseCellAsync(c, ch, &sendWait)
+		parseCellAsync(c, ch, &sendWait)
 		ix = cellLoc.close.last + 1
 	}
 

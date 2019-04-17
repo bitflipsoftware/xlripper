@@ -17,7 +17,7 @@ const (
 )
 
 func topen(filename string) string {
-	p := xpath(filename)
+	p := tpath(filename)
 	f, err := os.Open(p)
 
 	if err != nil {
@@ -34,8 +34,36 @@ func topen(filename string) string {
 	return string(buf.Bytes())
 }
 
-func xpath(filename string) string {
+func tpath(filename string) string {
 	dir := testFilesDir()
+	rel := filepath.Join(dir, filename)
+	abs, err := filepath.Abs(rel)
+	if err != nil {
+		panic(err)
+	}
+	return abs
+}
+
+func iopen(filename string) string {
+	p := ipath(filename)
+	f, err := os.Open(p)
+
+	if err != nil {
+		panic(err)
+	} else if f == nil {
+		panic("file is nil")
+	} else {
+		defer f.Close()
+	}
+
+	buf := bytes.Buffer{}
+	w := bufio.NewWriter(&buf)
+	io.Copy(w, f)
+	return string(buf.Bytes())
+}
+
+func ipath(filename string) string {
+	dir := integFilesDir()
 	rel := filepath.Join(dir, filename)
 	abs, err := filepath.Abs(rel)
 	if err != nil {
@@ -58,6 +86,16 @@ func thisDir() string {
 func testFilesDir() string {
 	myDir := thisDir()
 	rel := filepath.Join(myDir, "test-files")
+	abs, err := filepath.Abs(rel)
+	if err != nil {
+		panic(err)
+	}
+	return abs
+}
+
+func integFilesDir() string {
+	myDir := thisDir()
+	rel := filepath.Join(myDir, "integ")
 	abs, err := filepath.Abs(rel)
 	if err != nil {
 		panic(err)
